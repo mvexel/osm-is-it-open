@@ -7,6 +7,9 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 interface MapProps {
   pois: POI[]
   onBoundsChange: (bbox: [number, number, number, number], zoom: number) => void
+  onSelectPoi?: (poi: POI) => void
+  onViewChange?: (view: { latitude: number; longitude: number; zoom: number }) => void
+  initialViewState?: { latitude: number; longitude: number; zoom: number }
 }
 
 const MIN_ZOOM = 16
@@ -28,9 +31,15 @@ const getMarkerColor = (openStatus: POI['openStatus']): string => {
   }
 }
 
-function Map({ pois, onBoundsChange }: MapProps) {
+function Map({ pois, onBoundsChange, onSelectPoi, onViewChange, initialViewState }: MapProps) {
   const mapRef = useRef<MapRef>(null)
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE)
+  const [viewState, setViewState] = useState(initialViewState ?? INITIAL_VIEW_STATE)
+
+  useEffect(() => {
+    if (initialViewState) {
+      setViewState(initialViewState)
+    }
+  }, [initialViewState?.latitude, initialViewState?.longitude, initialViewState?.zoom])
 
   useEffect(() => {
     const map = mapRef.current?.getMap()
@@ -45,6 +54,7 @@ function Map({ pois, onBoundsChange }: MapProps) {
         bounds.getNorth(),
       ]
       onBoundsChange(bbox, zoom)
+      onViewChange?.({ latitude: map.getCenter().lat, longitude: map.getCenter().lng, zoom })
     }
   }, [])
 
@@ -56,10 +66,11 @@ function Map({ pois, onBoundsChange }: MapProps) {
     const bbox: [number, number, number, number] = [
       bounds.getWest(),
       bounds.getSouth(),
-      bounds.getEast(),
-      bounds.getNorth(),
-    ]
-    onBoundsChange(bbox, zoom)
+        bounds.getEast(),
+        bounds.getNorth(),
+      ]
+      onBoundsChange(bbox, zoom)
+    onViewChange?.({ latitude: map.getCenter().lat, longitude: map.getCenter().lng, zoom })
   }
 
   return (
@@ -80,10 +91,13 @@ function Map({ pois, onBoundsChange }: MapProps) {
             longitude={poi.lon}
             anchor="bottom"
           >
-            <div
+            <button
+              type="button"
+              onClick={() => onSelectPoi?.(poi)}
               className="w-6 h-6 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform"
               style={{ backgroundColor: getMarkerColor(poi.openStatus) }}
               title={poi.name || 'Unnamed POI'}
+              aria-label={poi.name || 'Point of interest'}
             />
           </Marker>
         ))}

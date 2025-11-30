@@ -5,7 +5,7 @@ type ScheduleProps = {
   coords?: [number, number]
   className?: string
   startOfWeek?: number
-} & Pick<FormatOptions, 'locale' | 'timeZone' | 'twelveHourClock' | 'now' | 'lookaheadDays'>
+} & Pick<FormatOptions, 'locale' | 'timeZone' | 'twelveHourClock' | 'hourCycle' | 'now' | 'lookaheadDays'>
 
 export function OpeningHoursSchedule({
   openingHours,

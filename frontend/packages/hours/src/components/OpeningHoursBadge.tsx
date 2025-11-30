@@ -6,7 +6,7 @@ type BadgeProps = {
   className?: string
 } & Pick<
   FormatOptions,
-  'locale' | 'timeZone' | 'twelveHourClock' | 'now' | 'lookaheadDays' | 'startOfWeek'
+  'locale' | 'timeZone' | 'twelveHourClock' | 'hourCycle' | 'now' | 'lookaheadDays' | 'startOfWeek'
 >
 
 const statusStyles: Record<string, { bg: string; text: string }> = {
