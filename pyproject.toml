@@ -1,0 +1,27 @@
+[project]
+name = "osm-is-it-open"
+version = "0.1.0"
+description = "Find POIs and check if they're open now using OpenStreetMap data"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.4.0",
+    "python-dateutil>=2.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.10.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools]
+packages = ["backend"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
