@@ -161,7 +161,14 @@ function App() {
             <div>
               <div className="text-sm text-gray-500">Selected POI</div>
               <div className="font-semibold text-lg text-gray-900">{selectedPoi.name || 'Unnamed POI'}</div>
-              <div className="text-xs text-gray-500 break-words">{selectedPoi.id}</div>
+              <a
+                className="text-xs text-blue-600 break-words hover:underline"
+                href={`https://www.openstreetmap.org/${selectedPoi.id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {selectedPoi.id}
+              </a>
             </div>
             <OpeningHoursBadge
               openingHours={selectedPoi.openingHours}
