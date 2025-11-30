@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Map from './components/Map'
 import { POI } from './types/poi'
 import { OpeningHoursBadge, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
+import { useOsmAuth } from './hooks/useOsmAuth'
 
 const MIN_ZOOM = 16
 const DEFAULT_VIEW = { latitude: 40.7128, longitude: -74.006, zoom: MIN_ZOOM }
@@ -15,6 +16,8 @@ function App() {
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [hourCycle, setHourCycle] = useState<'12h' | '24h'>('24h')
   const [initialViewState, setInitialViewState] = useState(DEFAULT_VIEW)
+  const { user: osmUser, login: loginOsm, logout: logoutOsm, authEnabled, loading: authLoading, error: authError } =
+    useOsmAuth()
 
   const fetchPOIs = async (
     bbox: [number, number, number, number],
@@ -125,18 +128,49 @@ function App() {
 
   return (
     <div className="w-full h-full relative">
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 rounded-full px-3 py-1 shadow">
-        <span className="text-sm text-gray-700">Clock</span>
-        {(['24h', '12h'] as const).map((cycle) => (
-          <button
-            key={cycle}
-            type="button"
-            onClick={() => setHourCycle(cycle)}
-            className={`text-sm px-3 py-1 rounded-full border ${hourCycle === cycle ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}
-          >
-            {cycle}
-          </button>
-        ))}
+      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
+        <div className="flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 rounded-full px-3 py-1 shadow">
+          <span className="text-sm text-gray-700">Clock</span>
+          {(['24h', '12h'] as const).map((cycle) => (
+            <button
+              key={cycle}
+              type="button"
+              onClick={() => setHourCycle(cycle)}
+              className={`text-sm px-3 py-1 rounded-full border ${hourCycle === cycle ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}
+            >
+              {cycle}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 rounded-full px-3 py-1 shadow">
+          <span className="text-sm text-gray-700">OSM</span>
+          {authEnabled ? (
+            osmUser ? (
+              <>
+                <span className="text-sm text-gray-900 font-medium">{osmUser.displayName || 'Signed in'}</span>
+                <button
+                  type="button"
+                  onClick={logoutOsm}
+                  className="text-sm px-3 py-1 rounded-full border bg-white text-gray-700 border-gray-300"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={loginOsm}
+                disabled={authLoading}
+                className="text-sm px-3 py-1 rounded-full border bg-gray-900 text-white border-gray-900 disabled:opacity-60"
+              >
+                {authLoading ? 'Signing in…' : 'Sign in'}
+              </button>
+            )
+          ) : (
+            <span className="text-xs text-gray-500">OSM auth not configured</span>
+          )}
+        </div>
+        {authError && <div className="text-xs text-red-600 bg-white/90 border border-red-200 rounded px-3 py-1">{authError}</div>}
       </div>
       <Map
         pois={pois}
