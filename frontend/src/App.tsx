@@ -2,17 +2,29 @@ import { useState } from 'react'
 import Map from './components/Map'
 import { POI } from './types/poi'
 
+const MIN_ZOOM = 16
+
 function App() {
   const [pois, setPois] = useState<POI[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchPOIs = async (bbox: [number, number, number, number]) => {
+  const fetchPOIs = async (
+    bbox: [number, number, number, number],
+    zoom: number,
+  ) => {
+    if (zoom < MIN_ZOOM) {
+      setPois([])
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const response = await fetch(
-        `/api/pois?bbox=${bbox.join(',')}`
+        `/api/pois?bbox=${bbox.join(',')}&zoom=${zoom}`
       )
       if (!response.ok) {
         throw new Error('Failed to fetch POIs')
