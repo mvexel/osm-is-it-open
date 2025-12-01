@@ -13,6 +13,7 @@ type DayRowProps = {
   onDone: () => void
   onAddRange: (insertAfter: number) => void
   baselineRanges: OpeningHoursRange[]
+  hourCycle: '12h' | '24h'
 }
 
 export function DayRow({
@@ -26,6 +27,7 @@ export function DayRow({
   onDone,
   onAddRange,
   baselineRanges,
+  hourCycle,
 }: DayRowProps) {
   return (
     <div
@@ -61,6 +63,7 @@ export function DayRow({
               baselineRanges[idx].start !== range.start ||
               baselineRanges[idx].end !== range.end
             }
+            hourCycle={hourCycle}
             onStartEdit={() => onStartEdit(idx)}
             onChangeStart={(value) => onChangeStart(idx, value)}
             onChangeEnd={(value) => onChangeEnd(idx, value)}

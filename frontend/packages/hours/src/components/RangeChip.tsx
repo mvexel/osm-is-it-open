@@ -6,6 +6,7 @@ type RangeChipProps = {
   range: OpeningHoursRange
   isEditing?: boolean
   isChanged?: boolean
+  hourCycle?: '12h' | '24h'
   onChangeStart: (value: string) => void
   onChangeEnd: (value: string) => void
   onRemove: () => void
@@ -17,6 +18,7 @@ export function RangeChip({
   range,
   isEditing = true,
   isChanged = false,
+  hourCycle = '24h',
   onChangeStart,
   onChangeEnd,
   onRemove,
@@ -38,7 +40,7 @@ export function RangeChip({
   return (
     <div style={{ ...baseStyle, background: '#f8fafc' }}>
       <input
-        type="time"
+        type="text"
         value={range.start}
         onChange={(e) => onChangeStart(e.target.value)}
         style={{
@@ -47,11 +49,14 @@ export function RangeChip({
           padding: '4px 6px',
           fontSize: 12,
           height: 24,
+          width: 70,
         }}
+        inputMode="numeric"
+        placeholder={hourCycle === '24h' ? '09:00' : '09:00 AM'}
       />
       <span style={{ color: '#94a3b8', fontSize: 12 }}>to</span>
       <input
-        type="time"
+        type="text"
         value={range.end}
         onChange={(e) => onChangeEnd(e.target.value)}
         style={{
@@ -60,7 +65,10 @@ export function RangeChip({
           padding: '4px 6px',
           fontSize: 12,
           height: 24,
+          width: 70,
         }}
+        inputMode="numeric"
+        placeholder={hourCycle === '24h' ? '21:00' : '09:00 PM'}
       />
       <div style={{ display: 'flex', marginLeft: 'auto', gap: 6 }}>
         <button

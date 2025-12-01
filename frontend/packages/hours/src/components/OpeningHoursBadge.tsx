@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { formatOpeningHours, type FormatOptions } from '../index'
+import { formatOpeningHours, type FormatOptions, type OpeningStatus } from '../index'
 import { DayRow } from './DayRow'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
 
@@ -19,9 +19,10 @@ type EditorProps = {
   onChange?: (value: string) => void
   className?: string
   originalValue?: string | null
+  hourCycle?: '12h' | '24h'
 }
 
-const statusStyles: Record<string, { bg: string; text: string }> = {
+const statusStyles: Record<OpeningStatus, { bg: string; text: string }> = {
   open: { bg: '#dcfce7', text: '#166534' },
   closed: { bg: '#fee2e2', text: '#991b1b' },
   unknown: { bg: '#e5e7eb', text: '#374151' },
@@ -48,8 +49,6 @@ const DAY_OSM_LABELS: Record<number, string> = {
   6: 'Sa',
 }
 
-const DEFAULT_RANGE: OpeningHoursRange = { start: '09:00', end: '17:00' }
-
 function pad(value: number): string {
   return value.toString().padStart(2, '0')
 }
@@ -71,27 +70,37 @@ function normalizeTimeInput(value: string): string {
   return `${pad(hour)}:${minute}`
 }
 
-function toMinutes(value: string): number {
+function toMinutes(value: string): number | null {
   const [h, m] = value.split(':').map((n) => Number(n))
-  if (Number.isNaN(h) || Number.isNaN(m)) return 0
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
   return h * 60 + m
 }
 
-function fromMinutes(total: number): string {
-  const mins = Math.max(0, Math.min(23 * 60 + 59, total))
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${pad(h)}:${pad(m)}`
+function normalizeRange(
+  range: OpeningHoursRange,
+): { normalized: OpeningHoursRange; startMinutes: number; endMinutes: number } | null {
+  const start = normalizeTimeInput(range.start)
+  const end = normalizeTimeInput(range.end)
+  const startMinutes = toMinutes(start)
+  const endMinutes = toMinutes(end)
+
+  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+    return null
+  }
+
+  return {
+    normalized: { start, end },
+    startMinutes,
+    endMinutes,
+  }
 }
 
 function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
   return ranges
-    .map((range) => ({
-      start: normalizeTimeInput(range.start),
-      end: normalizeTimeInput(range.end),
-    }))
-    .filter((range) => range.start && range.end && range.start < range.end)
-    .sort((a, b) => a.start.localeCompare(b.start))
+    .map(normalizeRange)
+    .filter((range): range is { normalized: OpeningHoursRange; startMinutes: number; endMinutes: number } => !!range)
+    .sort((a, b) => a.startMinutes - b.startMinutes)
+    .map((range) => range.normalized)
 }
 
 function rangesEqual(a: OpeningHoursRange[], b: OpeningHoursRange[]): boolean {
@@ -152,34 +161,38 @@ export function buildOpeningHoursString(model: OpeningHoursModel): string {
 
 export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel {
   if (!value) return []
-  const info = formatOpeningHours(value, { hourCycle: '24h', lookaheadDays: 7, startOfWeek: 1 })
-  const normalized = (info.normalized ?? value).trim()
-  if (normalized === '24/7') {
-    return DAY_ORDER.map((day) => ({
-      day,
-      ranges: [{ start: '00:00', end: '23:59' }],
-    }))
-  }
+  try {
+    const info = formatOpeningHours(value, { hourCycle: '24h', lookaheadDays: 7, startOfWeek: 1 })
+    const normalized = (info.normalized ?? value).trim()
+    if (normalized === '24/7') {
+      return DAY_ORDER.map((day) => ({
+        day,
+        ranges: [{ start: '00:00', end: '23:59' }],
+      }))
+    }
 
-  const entries = new Map<number, OpeningHoursRange[]>()
-  for (const day of info.intervals) {
-    const ranges = sanitizeRanges(
-      day.ranges.map((range) => ({
-        start: normalizeTimeInput(range.start),
-        end: normalizeTimeInput(range.end),
+    const entries = new Map<number, OpeningHoursRange[]>()
+    for (const day of info.intervals ?? []) {
+      const ranges = sanitizeRanges(
+        day.ranges.map((range) => ({
+          start: normalizeTimeInput(range.start),
+          end: normalizeTimeInput(range.end),
+        })),
+      )
+      if (ranges.length > 0) {
+        entries.set(day.day, ranges)
+      }
+    }
+
+    return sortDays(
+      DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
+        day,
+        ranges: entries.get(day) ?? [],
       })),
     )
-    if (ranges.length > 0) {
-      entries.set(day.day, ranges)
-    }
+  } catch {
+    return []
   }
-
-  return sortDays(
-    DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
-      day,
-      ranges: entries.get(day) ?? [],
-    })),
-  )
 }
 
 export function OpeningHoursBadge({
@@ -188,8 +201,15 @@ export function OpeningHoursBadge({
   className = '',
   ...opts
 }: BadgeProps) {
-  const info = formatOpeningHours(openingHours, { coords, ...opts })
-  const styles = statusStyles[info.status]
+  const info =
+    (() => {
+      try {
+        return formatOpeningHours(openingHours, { coords, ...opts })
+      } catch {
+        return { status: 'unknown' as OpeningStatus, label: 'Hours unavailable', intervals: [] }
+      }
+    })() ?? { status: 'unknown' as OpeningStatus, label: 'Hours unavailable', intervals: [] }
+  const styles = statusStyles[info.status] ?? statusStyles.unknown
   const labelParts = info.label.match(/^(Open until|Closed • opens)\s*(.*)$/i)
   const primary = info.status === 'open' ? 'Open' : info.status === 'closed' ? 'Closed' : 'Unknown'
   const secondary = labelParts ? `${labelParts[1]} ${labelParts[2]}` : info.label
@@ -219,35 +239,33 @@ export function OpeningHoursBadge({
   )
 }
 
-export function OpeningHoursEditor({ value, onChange, className = '', originalValue }: EditorProps) {
-  const [days, setDays] = useState<OpeningHoursModel>(() => parseOpeningHoursModel(value))
+export function OpeningHoursEditor({ value, onChange, className = '', originalValue, hourCycle = '24h' }: EditorProps) {
+  const editingSource = useMemo(() => value ?? originalValue ?? '', [value, originalValue])
+  const baselineSource = useMemo(() => originalValue ?? editingSource, [originalValue, editingSource])
+  const baselineModel = useMemo(() => parseOpeningHoursModel(baselineSource), [baselineSource])
+  const baseline = useMemo(() => buildOpeningHoursString(baselineModel), [baselineModel])
+
+  const [days, setDays] = useState<OpeningHoursModel>(() => parseOpeningHoursModel(editingSource))
   const [editingRange, setEditingRange] = useState<{ day: number; idx: number } | null>(null)
   const [showOutput, setShowOutput] = useState(false)
-  const [baseline, setBaseline] = useState<string>(() =>
-    buildOpeningHoursString(parseOpeningHoursModel(originalValue ?? value)),
-  )
-  const [baselineModel, setBaselineModel] = useState<OpeningHoursModel>(() =>
-    parseOpeningHoursModel(originalValue ?? value),
-  )
   const formatted = useMemo(() => buildOpeningHoursString(days), [days])
-  const lastFormattedRef = useRef<string | null>(null)
+  const lastSyncedSourceRef = useRef<string | null>(null)
+  const lastEmittedValueRef = useRef<string | null>(null)
   const isChanged = formatted !== baseline
+  const hasInvalidRanges = useMemo(
+    () => days.some((entry) => entry.ranges.some((range) => !normalizeRange(range))),
+    [days],
+  )
 
   useEffect(() => {
-    const externalValue = value ?? ''
-    const baselineSource = originalValue ?? externalValue
-    const baselineNormalized = buildOpeningHoursString(parseOpeningHoursModel(baselineSource))
-    if (externalValue === lastFormattedRef.current && baselineNormalized === baseline) return
-    const nextModel = parseOpeningHoursModel(externalValue)
-    setDays(nextModel)
-    setBaselineModel(parseOpeningHoursModel(baselineSource))
-    setBaseline(baselineNormalized)
+    if (editingSource === lastSyncedSourceRef.current || editingSource === lastEmittedValueRef.current) return
+    setDays(parseOpeningHoursModel(editingSource))
     setEditingRange(null)
-    lastFormattedRef.current = externalValue
-  }, [value, originalValue, baseline])
+    lastSyncedSourceRef.current = editingSource
+  }, [editingSource])
 
   useEffect(() => {
-    lastFormattedRef.current = formatted
+    lastEmittedValueRef.current = formatted
     onChange?.(formatted)
   }, [formatted, onChange])
 
@@ -262,14 +280,9 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
   }
 
   const resetToBaseline = () => {
-    const source = originalValue ?? value
-    const model = parseOpeningHoursModel(source)
-    setDays(model)
-    setBaselineModel(model)
+    setDays(baselineModel)
     setEditingRange(null)
-    const normalized = buildOpeningHoursString(parseOpeningHoursModel(source))
-    setBaseline(normalized)
-    lastFormattedRef.current = normalized
+    lastSyncedSourceRef.current = baselineSource
   }
 
   const updateRange = (day: number, rangeIdx: number, field: 'start' | 'end', value: string) => {
@@ -288,7 +301,7 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
   const addRange = (day: number, insertAfter: number | null = null) => {
     const next = updateDays((prev) => {
       const existing = prev.find((entry) => entry.day === day)
-      const nextRange: OpeningHoursRange = { start: '00:00', end: '00:00' }
+      const nextRange: OpeningHoursRange = { start: '09:00', end: '17:00' }
       if (existing) {
         const insertPos =
           insertAfter === null
@@ -368,6 +381,22 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
           </button>
         </div>
       )}
+      {hasInvalidRanges && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#fee2e2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            borderRadius: 8,
+            padding: '6px 8px',
+            fontSize: 12,
+          }}
+        >
+          Some time ranges are invalid (end must be after start); they are ignored in the output.
+        </div>
+      )}
 
       {DAY_ORDER.map((dayNumber) => {
         const entry = days.find((d) => d.day === dayNumber)
@@ -385,6 +414,7 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
             onRemoveRange={(idx) => removeRange(dayNumber, idx)}
             onAddRange={(insertAfter) => addRange(dayNumber, insertAfter)}
             onDone={() => setEditingRange(null)}
+            hourCycle={hourCycle}
           />
         )
       })}
