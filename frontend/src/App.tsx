@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Map from './components/Map'
 import { POI } from './types/poi'
-import { OpeningHoursBadge, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
+import { OpeningHoursBadge, OpeningHoursEditor, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
 import { useOsmAuth } from './hooks/useOsmAuth'
 import { reverseGeocodePlace } from './utils/nominatim'
 import { DEFAULT_VIEW, MIN_ZOOM } from './config/map'
@@ -22,8 +22,10 @@ function App() {
     useOsmAuth()
   const [selectedPlace, setSelectedPlace] = useState<{ city?: string; countryCode?: string } | null>(null)
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_VIEW.zoom)
-  const [editMode, setEditMode] = useState(false)
   const [editHours, setEditHours] = useState<string>('')
+  useEffect(() => {
+    setEditHours(selectedPoi?.openingHours || '')
+  }, [selectedPoi?.id, selectedPoi?.openingHours])
 
   const fetchPOIs = async (
     bbox: [number, number, number, number],
@@ -108,7 +110,6 @@ function App() {
         openStatus: status,
       }
       setSelectedPoi(poi)
-      setEditMode(false)
       setEditHours(openingHours || '')
       reverseGeocodePlace(poi.lat, poi.lon).then((info) => {
         setSelectedPlace({ city: info?.city, countryCode: info?.countryCode })
@@ -239,19 +240,17 @@ function App() {
               </a>
             </div>
             <OpeningHoursBadge
-              openingHours={editMode ? editHours : selectedPoi.openingHours}
+              openingHours={editHours || selectedPoi.openingHours}
               coords={[selectedPoi.lat, selectedPoi.lon]}
               countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
               hourCycle={hourCycle}
             />
           </div>
           <div className="mt-3">
-            <OpeningHoursSchedule
-              openingHours={editMode ? editHours : selectedPoi.openingHours}
-              coords={[selectedPoi.lat, selectedPoi.lon]}
-              countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
-              hourCycle={hourCycle}
-              className="bg-white"
+            <OpeningHoursEditor
+              value={editHours || selectedPoi.openingHours}
+              originalValue={selectedPoi.openingHours}
+              onChange={setEditHours}
             />
           </div>
           <div className="mt-3 flex flex-col gap-2">
@@ -262,24 +261,16 @@ function App() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setEditMode((prev) => !prev)}
-                  className="text-sm px-3 py-1 rounded border border-gray-300 bg-white text-gray-800"
+                  onClick={() => applyEditedHours(selectedPoi, editHours, (poi) => setSelectedPoi(poi))}
+                  className="text-sm px-3 py-1 rounded border border-gray-900 bg-gray-900 text-white"
                 >
-                  {editMode ? 'Cancel edit' : 'Edit hours'}
+                  Apply locally
                 </button>
-                {editMode && (
-                  <button
-                    type="button"
-                    onClick={() => applyEditedHours(selectedPoi, editHours, (poi) => setSelectedPoi(poi))}
-                    className="text-sm px-3 py-1 rounded border border-gray-900 bg-gray-900 text-white"
-                  >
-                    Apply locally
-                  </button>
-                )}
               </div>
             )}
-            {editMode && (
-              <div className="flex flex-col gap-2">
+            {/* <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1 text-xs text-gray-600">
+                <span>Raw opening_hours (optional)</span>
                 <textarea
                   value={editHours}
                   onChange={(e) => setEditHours(e.target.value)}
@@ -287,12 +278,15 @@ function App() {
                   className="w-full border border-gray-300 rounded p-2 text-sm"
                   placeholder="Mo-Fr 09:00-17:00; Su off"
                 />
-                <div className="text-xs text-gray-600 flex items-center gap-2">
-                  <span>Quick search:</span>
-                  <SearchLinks query={buildSearchQuery(selectedPoi, selectedPlace)} />
-                </div>
+                <span className="text-[11px] text-gray-500">
+                  Edits sync both ways with the editor above.
+                </span>
+              </label>
+              <div className="text-xs text-gray-600 flex items-center gap-2">
+                <span>Quick search:</span>
+                <SearchLinks query={buildSearchQuery(selectedPoi, selectedPlace)} />
               </div>
-            )}
+            </div> */}
           </div>
           <div className="mt-3 flex justify-end">
             <button

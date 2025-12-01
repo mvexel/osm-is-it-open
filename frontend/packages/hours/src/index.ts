@@ -2,8 +2,15 @@ import opening_hours, {
   type nominatim_object,
   type opening_hours as OpeningHoursLib,
 } from 'opening_hours'
-export { OpeningHoursBadge } from './components/OpeningHoursBadge'
+export { OpeningHoursBadge, OpeningHoursEditor } from './components/OpeningHoursBadge'
 export { OpeningHoursSchedule } from './components/OpeningHoursSchedule'
+export {
+  buildOpeningHoursString,
+  parseOpeningHoursModel,
+  type OpeningHoursDay,
+  type OpeningHoursModel,
+  type OpeningHoursRange,
+} from './components/OpeningHoursBadge'
 
 export type OpeningStatus = 'open' | 'closed' | 'unknown'
 

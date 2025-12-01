@@ -30,6 +30,7 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.35.0",
     "opening_hours": "^3.8.0"
   },
   "devDependencies": {

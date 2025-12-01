@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   OpeningHoursBadge,
+  OpeningHoursEditor,
   OpeningHoursSchedule,
   formatOpeningHours,
 } from '../src'
@@ -62,6 +63,7 @@ async function fetchOpeningHours(element: string) {
 function Demo() {
   const [element, setElement] = useState<string>(DEFAULT_ELEMENT)
   const [openingHours, setOpeningHours] = useState<string>('Mo-Fr 09:00-17:00')
+  const [sourceHours, setSourceHours] = useState<string>('Mo-Fr 09:00-17:00')
   const [coords, setCoords] = useState<[number, number] | undefined>()
   const [name, setName] = useState<string | undefined>()
   const [error, setError] = useState<string | null>(null)
@@ -79,6 +81,7 @@ function Demo() {
     try {
       const result = await fetchOpeningHours(element)
       setOpeningHours(result.openingHours)
+      setSourceHours(result.openingHours)
       setCoords(result.coords)
       setName(result.name ?? result.id)
     } catch (err) {
@@ -104,7 +107,7 @@ function Demo() {
         <p style={{ margin: 0, color: '#475569' }}>
           Enter an OSM element ID (node/way/relation) to load its opening_hours
           via Overpass and preview the badge + schedule components. You can also
-          edit the hours string below.
+          build the hours interactively below.
         </p>
       </header>
 
@@ -154,25 +157,32 @@ function Demo() {
           </span>
         </label>
 
-        <label style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ fontWeight: 600 }}>
             opening_hours value {name ? `(from ${name})` : ''}
-          </span>
-          <textarea
-            value={openingHours}
-            onChange={(e) => setOpeningHours(e.target.value)}
-            rows={3}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              fontSize: 14,
-              fontFamily: 'monospace',
-            }}
-            placeholder="Mo-Fr 09:00-17:00; Sa 10:00-14:00"
-          />
-        </label>
+          </div>
+          <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
+          <label style={{ display: 'grid', gap: 4 }}>
+            <span style={{ fontSize: 13, color: '#475569' }}>Raw opening_hours (optional)</span>
+            <textarea
+              value={openingHours}
+              onChange={(e) => setOpeningHours(e.target.value)}
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: 14,
+                fontFamily: 'monospace',
+              }}
+              placeholder="Mo-Fr 09:00-17:00; Sa 10:00-14:00"
+            />
+            <span style={{ color: '#94a3b8', fontSize: 12 }}>
+              Changes to the raw text stay in sync with the editor above.
+            </span>
+          </label>
+        </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontWeight: 600 }}>Clock:</span>
@@ -223,12 +233,7 @@ function Demo() {
         </span>
       </div>
 
-      <OpeningHoursSchedule
-        openingHours={openingHours}
-        coords={coords}
-        hourCycle={hourCycle}
-        className="oh-schedule"
-      />
+      <OpeningHoursEditor value={openingHours} originalValue={sourceHours} onChange={setOpeningHours} />
     </div>
   )
 }

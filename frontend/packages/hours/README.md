@@ -16,6 +16,8 @@ Work-in-progress package for formatting and rendering OSM `opening_hours` string
 - `normalizeOpeningHours(ohString)` → prettified string (falls back to input on error).
 - `OpeningHoursBadge` — status chip with “Open until …” text.
 - `OpeningHoursSchedule` — weekly view (7 days, today highlighted).
+- `OpeningHoursEditor` — interactive builder to add days, multiple time ranges, and duplicate schedules.
+- `parseOpeningHoursModel` / `buildOpeningHoursString` — convert between OSM `opening_hours` strings and a day/range model.
 
 Demo page lets you enter an OSM element ID (node/way/relation), fetch its `opening_hours` via Overpass, and preview the badge + schedule components.
 
