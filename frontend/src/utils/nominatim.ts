@@ -2,12 +2,18 @@ const NOMINATIM_URL =
   (import.meta.env.VITE_NOMINATIM_URL as string | undefined) ||
   'https://nominatim.openstreetmap.org/reverse'
 
-const cache = new Map<string, string | undefined>()
+type PlaceInfo = {
+  countryCode?: string
+  city?: string
+  displayName?: string
+}
 
-export async function reverseGeocodeCountry(
+const cache = new Map<string, PlaceInfo | undefined>()
+
+export async function reverseGeocodePlace(
   lat: number,
   lon: number,
-): Promise<string | undefined> {
+): Promise<PlaceInfo | undefined> {
   const key = `${lat.toFixed(3)},${lon.toFixed(3)}`
   if (cache.has(key)) return cache.get(key)
 
@@ -15,23 +21,40 @@ export async function reverseGeocodeCountry(
   url.searchParams.set('lat', String(lat))
   url.searchParams.set('lon', String(lon))
   url.searchParams.set('format', 'jsonv2')
-  url.searchParams.set('zoom', '5')
+  url.searchParams.set('zoom', '10')
   url.searchParams.set('addressdetails', '1')
 
   try {
     const res = await fetch(url.toString(), {
       headers: {
-        // Nominatim requests a descriptive User-Agent; browsers disallow setting UA, but this header can help identify the app.
         'Accept': 'application/json',
       },
     })
     if (!res.ok) throw new Error(`Nominatim error ${res.status}`)
     const data = await res.json()
-    const code: string | undefined = data?.address?.country_code
-    cache.set(key, code)
-    return code
+    const address = data?.address ?? {}
+    const city =
+      address.city ||
+      address.town ||
+      address.village ||
+      address.hamlet ||
+      address.locality ||
+      address.county
+    const info: PlaceInfo = {
+      countryCode: address.country_code,
+      city,
+      displayName: data?.display_name,
+    }
+    cache.set(key, info)
+    return info
   } catch {
     cache.set(key, undefined)
     return undefined
   }
+}
+
+// Backward-compatible helper
+export async function reverseGeocodeCountry(lat: number, lon: number): Promise<string | undefined> {
+  const info = await reverseGeocodePlace(lat, lon)
+  return info?.countryCode
 }

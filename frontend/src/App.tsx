@@ -3,7 +3,7 @@ import Map from './components/Map'
 import { POI } from './types/poi'
 import { OpeningHoursBadge, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
 import { useOsmAuth } from './hooks/useOsmAuth'
-import { reverseGeocodeCountry } from './utils/nominatim'
+import { reverseGeocodePlace } from './utils/nominatim'
 import { DEFAULT_VIEW, MIN_ZOOM } from './config/map'
 
 const MAP_HASH_PREFIX = '#map='
@@ -20,6 +20,8 @@ function App() {
   const [viewCountryCode, setViewCountryCode] = useState<string | undefined>(DEFAULT_COUNTRY)
   const { user: osmUser, login: loginOsm, logout: logoutOsm, authEnabled, loading: authLoading, error: authError } =
     useOsmAuth()
+  const [selectedPlace, setSelectedPlace] = useState<{ city?: string; countryCode?: string } | null>(null)
+  const [currentZoom, setCurrentZoom] = useState(DEFAULT_VIEW.zoom)
 
   const fetchPOIs = async (
     bbox: [number, number, number, number],
@@ -55,14 +57,15 @@ function App() {
     const lat = view.latitude.toFixed(5)
     const lon = view.longitude.toFixed(5)
     const zoom = view.zoom.toFixed(2)
+    setCurrentZoom(view.zoom)
     const hash = `${MAP_HASH_PREFIX}${zoom}/${lat}/${lon}`
     const url = new URL(window.location.href)
     url.hash = hash
     window.history.replaceState(null, '', url.toString())
 
-    reverseGeocodeCountry(view.latitude, view.longitude).then((code) => {
-      if (code && code !== viewCountryCode) {
-        setViewCountryCode(code)
+    reverseGeocodePlace(view.latitude, view.longitude).then((info) => {
+      if (info?.countryCode && info.countryCode !== viewCountryCode) {
+        setViewCountryCode(info.countryCode)
       }
     })
   }
@@ -103,6 +106,9 @@ function App() {
         openStatus: status,
       }
       setSelectedPoi(poi)
+      reverseGeocodePlace(poi.lat, poi.lon).then((info) => {
+        setSelectedPlace({ city: info?.city, countryCode: info?.countryCode })
+      })
       setPois((prev) => {
         const filtered = prev.filter((p) => p.id !== poi.id)
         return [poi, ...filtered]
@@ -135,10 +141,20 @@ function App() {
     }
 
     // Prime country code from initial view
-    reverseGeocodeCountry(initialViewState.latitude, initialViewState.longitude).then((code) => {
-      if (code) setViewCountryCode(code)
+    reverseGeocodePlace(initialViewState.latitude, initialViewState.longitude).then((info) => {
+      if (info?.countryCode) setViewCountryCode(info.countryCode)
     })
   }, [])
+
+  useEffect(() => {
+    if (!selectedPoi) {
+      setSelectedPlace(null)
+      return
+    }
+    reverseGeocodePlace(selectedPoi.lat, selectedPoi.lon).then((info) => {
+      setSelectedPlace({ city: info?.city, countryCode: info?.countryCode })
+    })
+  }, [selectedPoi?.id])
 
   return (
     <div className="w-full h-full relative">
@@ -192,7 +208,7 @@ function App() {
         onSelectPoi={setSelectedPoi}
         onViewChange={handleViewChange}
         initialViewState={initialViewState}
-        currentZoom={initialViewState.zoom}
+        currentZoom={currentZoom}
       />
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-10">
@@ -239,6 +255,12 @@ function App() {
               Hours unavailable for this POI.
             </div>
           )}
+          {!selectedPoi.openingHours && (
+            <div className="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-2">
+              <span>Quick search:</span>
+              <SearchLinks query={buildSearchQuery(selectedPoi, selectedPlace)} />
+            </div>
+          )}
           <div className="mt-3 flex justify-end">
             <button
               type="button"
@@ -278,4 +300,45 @@ function countryCodeFromTags(tags: Record<string, string> | undefined, fallback?
     fallback ||
     DEFAULT_COUNTRY
   return code ? code.toLowerCase() : undefined
+}
+
+function buildSearchQuery(poi: POI, place: { city?: string } | null): string {
+  const name = poi.name || poi.tags?.['addr:housename'] || poi.id
+  const city = place?.city
+  return [name, city].filter(Boolean).join(', ')
+}
+
+function SearchLinks({ query }: { query: string }) {
+  const encoded = encodeURIComponent(query || '')
+  if (!query) return null
+  return (
+    <>
+      <a
+        className="text-blue-600 hover:underline"
+        href={`https://www.google.com/search?q=${encoded}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Google
+      </a>
+      <span className="text-gray-600">/</span>
+      <a
+        className="text-blue-600 hover:underline"
+        href={`https://duckduckgo.com/?q=${encoded}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        DuckDuckGo
+      </a>
+      <span className="text-gray-600">/</span>
+      <a
+        className="text-blue-600 hover:underline"
+        href={`https://kagi.com/search?q=${encoded}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Kagi
+      </a>
+    </>
+  )
 }
