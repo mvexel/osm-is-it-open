@@ -7,6 +7,7 @@ Goal: use the `@osm-is-it-open/hours` package inside the app to show opening hou
 - [x] Identify POI UI surface: detail card triggered by marker click; shows badge + schedule.
 - [x] Pass coordinates into the formatter/components for accurate sunrise/sunset handling.
 - [x] Add a user-facing clock preference toggle (12h/24h) or detect from locale; thread through to components.
+- [x] Prep OSM auth (login/logout UI via `osm-auth`) for future editing.
 - [ ] Keep Overpass calls unchanged; only augment display. Avoid extra network requests.
 - [ ] Add minimal UI states: “Hours unavailable” when missing/invalid; “Zoom in” already present for bbox guard.
 

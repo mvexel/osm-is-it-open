@@ -4,9 +4,8 @@ import { POI } from './types/poi'
 import { OpeningHoursBadge, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
 import { useOsmAuth } from './hooks/useOsmAuth'
 import { reverseGeocodeCountry } from './utils/nominatim'
+import { DEFAULT_VIEW, MIN_ZOOM } from './config/map'
 
-const MIN_ZOOM = 16
-const DEFAULT_VIEW = { latitude: 40.7128, longitude: -74.006, zoom: MIN_ZOOM }
 const MAP_HASH_PREFIX = '#map='
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 const DEFAULT_COUNTRY = (import.meta.env.VITE_OSM_DEFAULT_COUNTRY || '').toLowerCase() || undefined

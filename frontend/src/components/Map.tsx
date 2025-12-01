@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Map as MapGL, MapRef, Marker } from 'react-map-gl/maplibre'
 import type { ViewStateChangeEvent } from 'react-map-gl/maplibre'
 import { POI } from '../types/poi'
+import { DEFAULT_VIEW, MIN_ZOOM } from '../config/map'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 interface MapProps {
@@ -11,14 +12,6 @@ interface MapProps {
   onViewChange?: (view: { latitude: number; longitude: number; zoom: number }) => void
   initialViewState?: { latitude: number; longitude: number; zoom: number }
   currentZoom?: number
-}
-
-const MIN_ZOOM = 16
-
-const INITIAL_VIEW_STATE = {
-  latitude: 40.7128,
-  longitude: -74.0060,
-  zoom: MIN_ZOOM,
 }
 
 const getMarkerColor = (openStatus: POI['openStatus']): string => {
@@ -34,7 +27,7 @@ const getMarkerColor = (openStatus: POI['openStatus']): string => {
 
 function Map({ pois, onBoundsChange, onSelectPoi, onViewChange, initialViewState, currentZoom }: MapProps) {
   const mapRef = useRef<MapRef>(null)
-  const [viewState, setViewState] = useState(initialViewState ?? INITIAL_VIEW_STATE)
+  const [viewState, setViewState] = useState(initialViewState ?? DEFAULT_VIEW)
 
   useEffect(() => {
     if (initialViewState) {
