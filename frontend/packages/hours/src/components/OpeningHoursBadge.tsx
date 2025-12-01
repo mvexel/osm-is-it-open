@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import opening_hours from 'opening_hours'
 import { formatOpeningHours, type FormatOptions, type OpeningStatus } from '../index'
 import { DayRow } from './DayRow'
+import {
+  buildOpeningHoursString,
+  normalizeRange,
+  parseOpeningHoursModel,
+  DAY_ORDER,
+} from '../model'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
+import {
+  additionalRulesLabelStyle,
+  additionalRulesStyle,
+  additionalRulesTextStyle,
+  badgeStyle,
+  changedStyle,
+  editorStyle,
+  invalidStyle,
+  outputCodeContainerStyle,
+  outputCodeStyle,
+  outputContainerStyle,
+  outputToggleStyle,
+  statusStyles,
+} from './styles'
 
 export type { OpeningHoursRange, OpeningHoursDay, OpeningHoursModel } from './openingHoursTypes'
 
@@ -23,19 +42,6 @@ type EditorProps = {
   hourCycle?: '12h' | '24h'
 }
 
-// Use a fixed anchor week (Mon Jan 1, 2024 UTC) to make parsing deterministic and
-// include overnight spillovers at the end of the week.
-const PARSE_ANCHOR = new Date(2024, 0, 1, 0, 0, 0, 0)
-const PARSE_LOOKAHEAD_DAYS = 8 // capture the full week plus spill into next Monday
-const MS_IN_DAY = 24 * 60 * 60 * 1000
-
-const statusStyles: Record<OpeningStatus, { bg: string; text: string }> = {
-  open: { bg: '#dcfce7', text: '#166534' },
-  closed: { bg: '#fee2e2', text: '#991b1b' },
-  unknown: { bg: '#e5e7eb', text: '#374151' },
-}
-
-const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0] // Mo-Su
 const DAY_LABELS: Record<number, string> = {
   0: 'Sun',
   1: 'Mon',
@@ -44,288 +50,6 @@ const DAY_LABELS: Record<number, string> = {
   4: 'Thu',
   5: 'Fri',
   6: 'Sat',
-}
-
-const DAY_OSM_LABELS: Record<number, string> = {
-  0: 'Su',
-  1: 'Mo',
-  2: 'Tu',
-  3: 'We',
-  4: 'Th',
-  5: 'Fr',
-  6: 'Sa',
-}
-
-const DAY_LABEL_TO_NUMBER: Record<string, number> = {
-  Su: 0,
-  Sun: 0,
-  Mo: 1,
-  Mon: 1,
-  Tu: 2,
-  Tue: 2,
-  We: 3,
-  Wed: 3,
-  Th: 4,
-  Thu: 4,
-  Fr: 5,
-  Fri: 5,
-  Sa: 6,
-  Sat: 6,
-}
-
-function pad(value: number): string {
-  return value.toString().padStart(2, '0')
-}
-
-function normalizeTimeInput(value: string): string {
-  const trimmed = value.trim()
-  const match = trimmed.match(/(\d{1,2}):(\d{2})(?:\s*([ap]m))?/i)
-  if (!match) return ''
-
-  let hour = Number(match[1])
-  const minute = match[2]
-  const suffix = match[3]?.toLowerCase()
-
-  if (suffix === 'pm' && hour < 12) hour += 12
-  if (suffix === 'am' && hour === 12) hour = 0
-  if (!suffix && hour === 24 && minute === '00') return '24:00'
-  hour = Math.min(Math.max(hour, 0), 23)
-
-  return `${pad(hour)}:${minute}`
-}
-
-function toMinutes(value: string): number | null {
-  const [h, m] = value.split(':').map((n) => Number(n))
-  if (Number.isNaN(h) || Number.isNaN(m)) return null
-  return h * 60 + m
-}
-
-function normalizeRange(
-  range: OpeningHoursRange,
-): { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } | null {
-  const start = normalizeTimeInput(range.start)
-  const end = normalizeTimeInput(range.end)
-  const startMinutes = toMinutes(start)
-  const endMinutes = toMinutes(end)
-
-  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes === endMinutes) {
-    return null
-  }
-
-  const spansMidnight = endMinutes < startMinutes
-  const endLabel = spansMidnight && endMinutes === 0 ? '24:00' : end
-
-  return {
-    normalized: { start, end: endLabel },
-    startMinutes,
-    sortEndMinutes: spansMidnight ? endMinutes + 24 * 60 : endMinutes,
-  }
-}
-
-function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
-  const normalized = ranges
-    .map(normalizeRange)
-    .filter(
-      (range): range is { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } => !!range,
-    )
-    .sort((a, b) => a.startMinutes - b.startMinutes || a.sortEndMinutes - b.sortEndMinutes)
-    .map((range) => range.normalized)
-
-  const deduped: OpeningHoursRange[] = []
-  for (const range of normalized) {
-    const last = deduped[deduped.length - 1]
-    if (!last || last.start !== range.start || last.end !== range.end) {
-      deduped.push(range)
-    }
-  }
-  return deduped
-}
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function daySpan(start: Date, end: Date): number {
-  return Math.floor((startOfDay(end).getTime() - startOfDay(start).getTime()) / MS_IN_DAY)
-}
-
-function formatClock(date: Date): string {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-function buildRangeFromInterval(start: Date, end: Date): OpeningHoursRange {
-  const span = daySpan(start, end)
-  const startLabel = formatClock(start)
-  const endLabel =
-    span === 1 && end.getHours() === 0 && end.getMinutes() === 0 ? '24:00' : formatClock(end)
-
-  return {
-    start: startLabel,
-    end: endLabel,
-  }
-}
-
-function expandDays(expr: string): number[] {
-  const days: number[] = []
-  const parts = expr.split(',').map((p) => p.trim())
-  for (const part of parts) {
-    if (!part) continue
-    if (part.includes('-')) {
-      const [startLabel, endLabel] = part.split('-').map((p) => p.trim())
-      const startDay = DAY_LABEL_TO_NUMBER[startLabel]
-      const endDay = DAY_LABEL_TO_NUMBER[endLabel]
-      if (startDay === undefined || endDay === undefined) continue
-      let current = startDay
-      while (true) {
-        days.push(current)
-        if (current === endDay) break
-        current = (current + 1) % 7
-      }
-    } else {
-      const day = DAY_LABEL_TO_NUMBER[part]
-      if (day !== undefined) days.push(day)
-    }
-  }
-  return days
-}
-
-function parseNormalizedString(normalized: string): OpeningHoursModel {
-  const entries = new Map<number, OpeningHoursRange[]>()
-  const segments = normalized.split(';').map((s) => s.trim()).filter(Boolean)
-
-  for (const segment of segments) {
-    const [dayExpr, timesExprRaw] = segment.split(/\s+/, 2)
-    if (!dayExpr || timesExprRaw === undefined) continue
-    const days = expandDays(dayExpr)
-    const timesExpr = timesExprRaw.trim()
-    if (/^off$/i.test(timesExpr)) {
-      days.forEach((day) => entries.set(day, entries.get(day) ?? []))
-      continue
-    }
-
-    const timeRanges = timesExpr.split(',').map((r) => r.trim()).filter(Boolean)
-    for (const rangeExpr of timeRanges) {
-      const [startRaw, endRaw] = rangeExpr.split('-').map((v) => v?.trim() ?? '')
-      const start = normalizeTimeInput(startRaw)
-      const end = normalizeTimeInput(endRaw)
-      if (!start || !end) continue
-      for (const day of days) {
-        const list = entries.get(day) ?? []
-        list.push({ start, end })
-        entries.set(day, list)
-      }
-    }
-  }
-
-  return sortDays(
-    DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
-      day,
-      ranges: sanitizeRanges(entries.get(day) ?? []),
-    })),
-  )
-}
-
-function rangesEqual(a: OpeningHoursRange[], b: OpeningHoursRange[]): boolean {
-  if (a.length !== b.length) return false
-  return a.every((range, idx) => range.start === b[idx].start && range.end === b[idx].end)
-}
-
-function sortDays(days: OpeningHoursModel): OpeningHoursModel {
-  const order = new Map(DAY_ORDER.map((day, idx) => [day, idx]))
-  return [...days].sort((a, b) => (order.get(a.day)! - order.get(b.day)!))
-}
-
-function buildDayRangeLabel(startIdx: number, endIdx: number): string {
-  const startDay = DAY_OSM_LABELS[DAY_ORDER[startIdx]]
-  const endDay = DAY_OSM_LABELS[DAY_ORDER[endIdx]]
-  return startIdx === endIdx ? startDay : `${startDay}-${endDay}`
-}
-
-export function buildOpeningHoursString(model: OpeningHoursModel): string {
-  const days = sortDays(model)
-  const cleaned = days.map((day) => ({
-    day: day.day,
-    ranges: sanitizeRanges(day.ranges),
-  }))
-  const map = new Map<number, OpeningHoursRange[]>()
-  cleaned.forEach((day) => {
-    if (day.ranges.length > 0) map.set(day.day, day.ranges)
-  })
-
-  const fullWeek = DAY_ORDER.map((day) => ({
-    day,
-    ranges: map.get(day) ?? [],
-  }))
-
-  const allOpen = fullWeek.every(
-    (day) => day.ranges.length === 1 && day.ranges[0].start === '00:00' && day.ranges[0].end === '23:59',
-  )
-  if (allOpen) return '24/7'
-
-  const segments: string[] = []
-  let idx = 0
-  while (idx < fullWeek.length) {
-    const startIdx = idx
-    let endIdx = idx
-    while (endIdx + 1 < fullWeek.length && rangesEqual(fullWeek[startIdx].ranges, fullWeek[endIdx + 1].ranges)) {
-      endIdx++
-    }
-    const hours =
-      fullWeek[startIdx].ranges.length === 0
-        ? 'off'
-        : fullWeek[startIdx].ranges.map((range) => `${range.start}-${range.end}`).join(', ')
-    segments.push(`${buildDayRangeLabel(startIdx, endIdx)} ${hours}`)
-    idx = endIdx + 1
-  }
-
-  return segments.join('; ')
-}
-
-export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel {
-  if (!value) return []
-  try {
-    const info = formatOpeningHours(value, {
-      now: PARSE_ANCHOR,
-      hourCycle: '24h',
-      lookaheadDays: PARSE_LOOKAHEAD_DAYS,
-      startOfWeek: 1,
-    })
-    const normalized = (info.normalized ?? value).trim()
-    if (normalized === '24/7') {
-      return DAY_ORDER.map((day) => ({
-        day,
-        ranges: [{ start: '00:00', end: '23:59' }],
-      }))
-    }
-
-    const fromNormalized = parseNormalizedString(normalized)
-    if (fromNormalized.length > 0) return fromNormalized
-
-    // Fallback to library intervals if manual parsing fails.
-    const entries = new Map<number, OpeningHoursRange[]>()
-    const oh = new opening_hours(value)
-    const windowStart = PARSE_ANCHOR
-    const windowEnd = new Date(windowStart.getTime() + PARSE_LOOKAHEAD_DAYS * MS_IN_DAY)
-
-    for (const [start, end] of oh.getOpenIntervals(windowStart, windowEnd)) {
-      const day = start.getDay()
-      const range = buildRangeFromInterval(start, end)
-      const existing = entries.get(day) ?? []
-      existing.push(range)
-      entries.set(day, existing)
-    }
-
-    return sortDays(
-      DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
-        day,
-        ranges: sanitizeRanges(entries.get(day) ?? []),
-      })),
-    )
-  } catch {
-    return []
-  }
 }
 
 export function OpeningHoursBadge({
@@ -350,19 +74,7 @@ export function OpeningHoursBadge({
   return (
     <span
       className={className}
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '2px',
-        padding: '8px 12px',
-        borderRadius: '6px',
-        background: styles.bg,
-        color: styles.text,
-        minWidth: '140px',
-        textAlign: 'center',
-      }}
+      style={badgeStyle(styles)}
     >
       <span style={{ fontSize: '14px', fontWeight: 600 }}>{primary}</span>
       <span style={{ fontSize: '12px', fontWeight: 400, opacity: 0.8, lineHeight: 1.2 }}>
@@ -378,21 +90,21 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
   const baselineModel = useMemo(() => parseOpeningHoursModel(baselineSource), [baselineSource])
   const baseline = useMemo(() => buildOpeningHoursString(baselineModel), [baselineModel])
 
-  const [days, setDays] = useState<OpeningHoursModel>(() => parseOpeningHoursModel(editingSource))
+  const [model, setModel] = useState<OpeningHoursModel>(() => parseOpeningHoursModel(editingSource))
   const [editingRange, setEditingRange] = useState<{ day: number; idx: number } | null>(null)
   const [showOutput, setShowOutput] = useState(false)
-  const formatted = useMemo(() => buildOpeningHoursString(days), [days])
+  const formatted = useMemo(() => buildOpeningHoursString(model), [model])
   const lastSyncedSourceRef = useRef<string | null>(null)
   const lastEmittedValueRef = useRef<string | null>(null)
   const isChanged = formatted !== baseline
   const hasInvalidRanges = useMemo(
-    () => days.some((entry) => entry.ranges.some((range) => !normalizeRange(range))),
-    [days],
+    () => model.days.some((entry) => entry.ranges.some((range) => !normalizeRange(range))),
+    [model],
   )
 
   useEffect(() => {
     if (editingSource === lastSyncedSourceRef.current || editingSource === lastEmittedValueRef.current) return
-    setDays(parseOpeningHoursModel(editingSource))
+    setModel(parseOpeningHoursModel(editingSource))
     setEditingRange(null)
     lastSyncedSourceRef.current = editingSource
   }, [editingSource])
@@ -402,10 +114,32 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
     onChange?.(formatted)
   }, [formatted, onChange])
 
-  const updateDays = (updater: (prev: OpeningHoursModel) => OpeningHoursModel): OpeningHoursModel => {
-    let nextModel: OpeningHoursModel = days
-    setDays((prev) => {
-      const next = sortDays(updater(prev))
+  useEffect(() => {
+    const hasEntering = model.days.some((d) => d.ranges.some((r) => r.status === 'entering'))
+    if (hasEntering) {
+      setTimeout(() => {
+        updateModel((prev) => ({
+          ...prev,
+          days: prev.days.map((d) => ({
+            ...d,
+            ranges: d.ranges.map((r) => {
+              if (r.status === 'entering') {
+                const { status, ...rest } = r
+                return rest
+              }
+              return r
+            }),
+          })),
+        }))
+      }, 100)
+    }
+  }, [model])
+
+  const updateModel = (updater: (prev: OpeningHoursModel) => OpeningHoursModel): OpeningHoursModel => {
+    let nextModel: OpeningHoursModel = model
+    setModel((prev) => {
+      const next = updater(prev)
+      next.days = next.days.sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day))
       nextModel = next
       return next
     })
@@ -413,14 +147,15 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
   }
 
   const resetToBaseline = () => {
-    setDays(baselineModel)
+    setModel(baselineModel)
     setEditingRange(null)
     lastSyncedSourceRef.current = baselineSource
   }
 
   const updateRange = (day: number, rangeIdx: number, field: 'start' | 'end', value: string) => {
-    updateDays((prev) =>
-      prev.map((entry) =>
+    updateModel((prev) => ({
+      ...prev,
+      days: prev.days.map((entry) =>
         entry.day === day
           ? {
             ...entry,
@@ -428,13 +163,13 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
           }
           : entry,
       ),
-    )
+    }))
   }
 
   const addRange = (day: number, insertAfter: number | null = null) => {
-    const next = updateDays((prev) => {
-      const existing = prev.find((entry) => entry.day === day)
-      const nextRange: OpeningHoursRange = { start: '09:00', end: '17:00' }
+    const next = updateModel((prev) => {
+      const existing = prev.days.find((entry) => entry.day === day)
+      const nextRange: OpeningHoursRange = { start: '09:00', end: '17:00', status: 'entering' }
       if (existing) {
         const insertPos =
           insertAfter === null
@@ -442,11 +177,17 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
             : Math.max(0, Math.min(existing.ranges.length, insertAfter + 1))
         const updatedRanges = [...existing.ranges]
         updatedRanges.splice(insertPos, 0, nextRange)
-        return prev.map((entry) => (entry.day === day ? { ...entry, ranges: updatedRanges } : entry))
+        return {
+          ...prev,
+          days: prev.days.map((entry) => (entry.day === day ? { ...entry, ranges: updatedRanges } : entry)),
+        }
       }
-      return [...prev, { day, ranges: [{ ...nextRange }] }]
+      return {
+        ...prev,
+        days: [...prev.days, { day, ranges: [{ ...nextRange }] }],
+      }
     })
-    const entry = next.find((d) => d.day === day)
+    const entry = next.days.find((d) => d.day === day)
     if (entry) {
       const insertPos =
         insertAfter === null ? entry.ranges.length - 1 : Math.max(0, Math.min(entry.ranges.length - 1, insertAfter + 1))
@@ -454,49 +195,46 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
     }
   }
 
+  const setRangeExiting = (day: number, rangeIdx: number) => {
+    updateModel((prev) => ({
+      ...prev,
+      days: prev.days.map((entry) =>
+        entry.day === day
+          ? {
+            ...entry,
+            ranges: entry.ranges.map((range, idx) => (idx === rangeIdx ? { ...range, status: 'exiting' } : range)),
+          }
+          : entry,
+      ),
+    }))
+  }
+
   const removeRange = (day: number, rangeIdx: number) => {
-    updateDays((prev) =>
-      prev.map((entry) =>
+    updateModel((prev) => ({
+      ...prev,
+      days: prev.days.map((entry) =>
         entry.day === day
           ? {
             ...entry,
             ranges: entry.ranges.filter((_, idx) => idx !== rangeIdx),
           }
-          : entry,
-      ),
-    )
+          : entry
+      ).filter(entry => entry.ranges.length > 0)
+    }))
     setEditingRange((prev) => (prev && prev.day === day && prev.idx === rangeIdx ? null : prev))
   }
+
   return (
     <div
       className={className}
-      style={{
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '8px',
-        background: '#ffffff',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-        width: '100%',
-      }}
+      style={editorStyle}
     >
       <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', padding: '4px 6px 8px' }}>
         Opening Hours
       </div>
       {isChanged && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#fef9c3',
-            border: '1px solid #fde68a',
-            color: '#92400e',
-            borderRadius: 8,
-            padding: '6px 8px',
-            fontSize: 12,
-          }}
+          style={changedStyle}
         >
           <span>Changed</span>
           <button
@@ -516,35 +254,28 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
       )}
       {hasInvalidRanges && (
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: '#fee2e2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            borderRadius: 8,
-            padding: '6px 8px',
-            fontSize: 12,
-          }}
+          style={invalidStyle}
         >
           Some time ranges are invalid (end must be after start); they are ignored in the output.
         </div>
       )}
 
       {DAY_ORDER.map((dayNumber) => {
-        const entry = days.find((d) => d.day === dayNumber)
+        const entry = model.days.find((d) => d.day === dayNumber)
         const ranges = entry?.ranges ?? []
+        const baselineRanges = baselineModel.days.find((d) => d.day === dayNumber)?.ranges ?? []
         return (
           <DayRow
             key={dayNumber}
             dayLabel={DAY_LABELS[dayNumber]}
             ranges={ranges}
-            baselineRanges={baselineModel.find((d) => d.day === dayNumber)?.ranges ?? []}
+            baselineRanges={baselineRanges}
             isEditingRange={(idx) => editingRange?.day === dayNumber && editingRange.idx === idx}
             onStartEdit={(idx) => setEditingRange({ day: dayNumber, idx })}
             onChangeStart={(idx, value) => updateRange(dayNumber, idx, 'start', value)}
             onChangeEnd={(idx, value) => updateRange(dayNumber, idx, 'end', value)}
-            onRemoveRange={(idx) => removeRange(dayNumber, idx)}
+            onSetExiting={(idx: number) => setRangeExiting(dayNumber, idx)}
+            onExited={(idx: number) => removeRange(dayNumber, idx)}
             onAddRange={(insertAfter) => addRange(dayNumber, insertAfter)}
             onDone={() => setEditingRange(null)}
             hourCycle={hourCycle}
@@ -552,19 +283,28 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
         )
       })}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+      <div style={additionalRulesStyle}>
+        <label style={additionalRulesLabelStyle}>
+            <span style={{ fontSize: 13, color: '#475569' }}>Additional rules (e.g. PH off)</span>
+            <textarea
+              value={model.modifiers.join('; ')}
+              onChange={(e) => {
+                const newModifiers = e.target.value.split(';').map(s => s.trim()).filter(Boolean);
+                updateModel(prev => ({ ...prev, modifiers: newModifiers }));
+              }}
+              rows={2}
+              style={additionalRulesTextStyle}
+              placeholder="PH off; SH 10:00-12:00"
+            />
+        </label>
+      </div>
+
+      <div style={outputContainerStyle}>
         <span style={{ fontSize: 11, color: '#475569' }}>OSM output</span>
         <button
           type="button"
           onClick={() => setShowOutput((prev) => !prev)}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            color: '#0f172a',
-            fontSize: 11,
-            cursor: 'pointer',
-            padding: '2px 4px',
-          }}
+          style={outputToggleStyle}
         >
           {showOutput ? 'Hide' : 'Show'}
         </button>
@@ -572,24 +312,10 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
 
       {showOutput && (
         <div
-          style={{
-            border: '1px solid #e2e8f0',
-            borderRadius: 10,
-            padding: '8px 10px',
-            background: '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            minHeight: 44,
-          }}
+          style={outputCodeContainerStyle}
         >
           <code
-            style={{
-              fontFamily: 'monospace',
-              fontSize: 11,
-              color: '#0f172a',
-              wordBreak: 'break-word',
-            }}
+            style={outputCodeStyle}
           >
             {formatted || '—'}
           </code>

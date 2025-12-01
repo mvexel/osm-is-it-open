@@ -4,13 +4,8 @@ import opening_hours, {
 } from 'opening_hours'
 export { OpeningHoursBadge, OpeningHoursEditor } from './components/OpeningHoursBadge'
 export { OpeningHoursSchedule } from './components/OpeningHoursSchedule'
-export {
-  buildOpeningHoursString,
-  parseOpeningHoursModel,
-  type OpeningHoursDay,
-  type OpeningHoursModel,
-  type OpeningHoursRange,
-} from './components/OpeningHoursBadge'
+export { buildOpeningHoursString, parseOpeningHoursModel } from './model'
+export type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
 
 export type OpeningStatus = 'open' | 'closed' | 'unknown'
 
@@ -244,7 +239,7 @@ function buildLabel(
   const needsDay =
     nextChange &&
     nextChange.toLocaleDateString('en-CA', { timeZone: opts.timeZone }) !==
-      opts.baseDate.toLocaleDateString('en-CA', { timeZone: opts.timeZone })
+    opts.baseDate.toLocaleDateString('en-CA', { timeZone: opts.timeZone })
   const dayLabel = nextChange
     ? new Intl.DateTimeFormat(opts.locale, { weekday: 'short', timeZone: opts.timeZone }).format(nextChange)
     : null

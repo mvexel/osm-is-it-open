@@ -1,4 +1,5 @@
-import { IconCircleCheck, IconClockPlus, IconClockX } from '@tabler/icons-react'
+import { IconClockPlus, IconClockX } from '@tabler/icons-react'
+import { useEffect, useState } from 'react'
 import type { OpeningHoursRange } from './openingHoursTypes'
 import { CHIP_HEIGHT, CHIP_MIN_WIDTH } from './editorLayout'
 
@@ -10,7 +11,8 @@ type RangeChipProps = {
   endSuffix?: string
   onChangeStart: (value: string) => void
   onChangeEnd: (value: string) => void
-  onRemove: () => void
+  onSetExiting: () => void
+  onExited: () => void
   onDone: () => void
   onAddBelow?: () => void
 }
@@ -23,24 +25,49 @@ export function RangeChip({
   endSuffix,
   onChangeStart,
   onChangeEnd,
-  onRemove,
+  onSetExiting,
+  onExited,
   onDone,
   onAddBelow,
 }: RangeChipProps) {
+  const [isVisible, setIsVisible] = useState(range.status !== 'entering')
+
+  useEffect(() => {
+    if (range.status === 'entering') {
+      requestAnimationFrame(() => {
+        setIsVisible(true)
+      })
+    } else if (range.status === 'exiting') {
+      setIsVisible(false)
+    }
+  }, [range.status])
+
   const baseStyle: React.CSSProperties = {
     border: `1px solid ${isChanged ? '#fbbf24' : '#e2e8f0'}`,
     borderRadius: 10,
-    height: CHIP_HEIGHT,
     minWidth: CHIP_MIN_WIDTH,
     display: 'flex',
     alignItems: 'center',
     gap: 6,
     padding: '6px 8px',
     background: isChanged ? '#fffbeb' : '#f8fafc',
+    transition: 'opacity 300ms ease-in-out, max-height 300ms ease-in-out, padding 300ms ease-in-out, border 300ms ease-in-out',
+    opacity: isVisible ? 1 : 0,
+    maxHeight: isVisible ? CHIP_HEIGHT : 0,
+    paddingTop: isVisible ? '6px' : '0',
+    paddingBottom: isVisible ? '6px' : '0',
+    overflow: 'hidden',
   }
 
   return (
-    <div style={{ ...baseStyle, background: '#f8fafc' }}>
+    <div 
+      style={baseStyle}
+      onTransitionEnd={() => {
+        if (!isVisible) {
+          onExited()
+        }
+      }}
+    >
       <input
         type="text"
         value={range.start}
@@ -76,7 +103,7 @@ export function RangeChip({
       <div style={{ display: 'flex', marginLeft: 'auto', gap: 6 }}>
         <button
           type="button"
-          onClick={onRemove}
+          onClick={onSetExiting}
           style={{
             padding: '4px 6px',
             borderRadius: 6,

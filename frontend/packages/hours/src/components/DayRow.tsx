@@ -9,7 +9,8 @@ type DayRowProps = {
   onStartEdit: (idx: number) => void
   onChangeStart: (idx: number, value: string) => void
   onChangeEnd: (idx: number, value: string) => void
-  onRemoveRange: (idx: number) => void
+  onSetExiting: (idx: number) => void
+  onExited: (idx: number) => void
   onDone: () => void
   onAddRange: (insertAfter: number) => void
   baselineRanges: OpeningHoursRange[]
@@ -22,7 +23,8 @@ export function DayRow({
   isEditingRange,
   onChangeStart,
   onChangeEnd,
-  onRemoveRange,
+  onSetExiting,
+  onExited,
   onDone,
   onAddRange,
   baselineRanges,
@@ -77,7 +79,8 @@ export function DayRow({
               endSuffix={isNextDay ? '+1' : undefined}
               onChangeStart={(value) => onChangeStart(idx, value)}
               onChangeEnd={(value) => onChangeEnd(idx, value)}
-              onRemove={() => onRemoveRange(idx)}
+              onSetExiting={() => onSetExiting(idx)}
+              onExited={() => onExited(idx)}
               onDone={onDone}
               onAddBelow={() => onAddRange(idx)}
             />
