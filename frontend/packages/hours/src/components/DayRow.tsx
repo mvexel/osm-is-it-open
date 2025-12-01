@@ -20,7 +20,6 @@ export function DayRow({
   dayLabel,
   ranges,
   isEditingRange,
-  onStartEdit,
   onChangeStart,
   onChangeEnd,
   onRemoveRange,
@@ -29,6 +28,12 @@ export function DayRow({
   baselineRanges,
   hourCycle,
 }: DayRowProps) {
+  const toMinutes = (value: string): number | null => {
+    const [h, m] = value.split(':').map((n) => Number(n))
+    if (Number.isNaN(h) || Number.isNaN(m)) return null
+    return h * 60 + m
+  }
+
   return (
     <div
       style={{
@@ -53,25 +58,31 @@ export function DayRow({
           minHeight: CHIP_HEIGHT,
         }}
       >
-        {ranges.map((range, idx) => (
-          <RangeChip
-            key={`${dayLabel}-${idx}`}
-            range={range}
-            isEditing={isEditingRange(idx)}
-            isChanged={
-              !baselineRanges[idx] ||
-              baselineRanges[idx].start !== range.start ||
-              baselineRanges[idx].end !== range.end
-            }
-            hourCycle={hourCycle}
-            onStartEdit={() => onStartEdit(idx)}
-            onChangeStart={(value) => onChangeStart(idx, value)}
-            onChangeEnd={(value) => onChangeEnd(idx, value)}
-            onRemove={() => onRemoveRange(idx)}
-            onDone={onDone}
-            onAddBelow={() => onAddRange(idx)}
-          />
-        ))}
+        {ranges.map((range, idx) => {
+          const startMinutes = toMinutes(range.start)
+          const endMinutes = toMinutes(range.end)
+          const isNextDay =
+            startMinutes !== null && endMinutes !== null && endMinutes < startMinutes && range.end !== '24:00'
+          return (
+            <RangeChip
+              key={`${dayLabel}-${idx}`}
+              range={range}
+              isEditing={isEditingRange(idx)}
+              isChanged={
+                !baselineRanges[idx] ||
+                baselineRanges[idx].start !== range.start ||
+                baselineRanges[idx].end !== range.end
+              }
+              hourCycle={hourCycle}
+              endSuffix={isNextDay ? '+1' : undefined}
+              onChangeStart={(value) => onChangeStart(idx, value)}
+              onChangeEnd={(value) => onChangeEnd(idx, value)}
+              onRemove={() => onRemoveRange(idx)}
+              onDone={onDone}
+              onAddBelow={() => onAddRange(idx)}
+            />
+          )
+        })}
 
         {ranges.length === 0 && (
           <button

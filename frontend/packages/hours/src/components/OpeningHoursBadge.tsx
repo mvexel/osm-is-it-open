@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import opening_hours from 'opening_hours'
 import { formatOpeningHours, type FormatOptions, type OpeningStatus } from '../index'
 import { DayRow } from './DayRow'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
@@ -26,6 +27,7 @@ type EditorProps = {
 // include overnight spillovers at the end of the week.
 const PARSE_ANCHOR = new Date(2024, 0, 1, 0, 0, 0, 0)
 const PARSE_LOOKAHEAD_DAYS = 8 // capture the full week plus spill into next Monday
+const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const statusStyles: Record<OpeningStatus, { bg: string; text: string }> = {
   open: { bg: '#dcfce7', text: '#166534' },
@@ -52,6 +54,23 @@ const DAY_OSM_LABELS: Record<number, string> = {
   4: 'Th',
   5: 'Fr',
   6: 'Sa',
+}
+
+const DAY_LABEL_TO_NUMBER: Record<string, number> = {
+  Su: 0,
+  Sun: 0,
+  Mo: 1,
+  Mon: 1,
+  Tu: 2,
+  Tue: 2,
+  We: 3,
+  Wed: 3,
+  Th: 4,
+  Thu: 4,
+  Fr: 5,
+  Fri: 5,
+  Sa: 6,
+  Sat: 6,
 }
 
 function pad(value: number): string {
@@ -120,6 +139,92 @@ function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
     }
   }
   return deduped
+}
+
+function startOfDay(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function daySpan(start: Date, end: Date): number {
+  return Math.floor((startOfDay(end).getTime() - startOfDay(start).getTime()) / MS_IN_DAY)
+}
+
+function formatClock(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function buildRangeFromInterval(start: Date, end: Date): OpeningHoursRange {
+  const span = daySpan(start, end)
+  const startLabel = formatClock(start)
+  const endLabel =
+    span === 1 && end.getHours() === 0 && end.getMinutes() === 0 ? '24:00' : formatClock(end)
+
+  return {
+    start: startLabel,
+    end: endLabel,
+  }
+}
+
+function expandDays(expr: string): number[] {
+  const days: number[] = []
+  const parts = expr.split(',').map((p) => p.trim())
+  for (const part of parts) {
+    if (!part) continue
+    if (part.includes('-')) {
+      const [startLabel, endLabel] = part.split('-').map((p) => p.trim())
+      const startDay = DAY_LABEL_TO_NUMBER[startLabel]
+      const endDay = DAY_LABEL_TO_NUMBER[endLabel]
+      if (startDay === undefined || endDay === undefined) continue
+      let current = startDay
+      while (true) {
+        days.push(current)
+        if (current === endDay) break
+        current = (current + 1) % 7
+      }
+    } else {
+      const day = DAY_LABEL_TO_NUMBER[part]
+      if (day !== undefined) days.push(day)
+    }
+  }
+  return days
+}
+
+function parseNormalizedString(normalized: string): OpeningHoursModel {
+  const entries = new Map<number, OpeningHoursRange[]>()
+  const segments = normalized.split(';').map((s) => s.trim()).filter(Boolean)
+
+  for (const segment of segments) {
+    const [dayExpr, timesExprRaw] = segment.split(/\s+/, 2)
+    if (!dayExpr || timesExprRaw === undefined) continue
+    const days = expandDays(dayExpr)
+    const timesExpr = timesExprRaw.trim()
+    if (/^off$/i.test(timesExpr)) {
+      days.forEach((day) => entries.set(day, entries.get(day) ?? []))
+      continue
+    }
+
+    const timeRanges = timesExpr.split(',').map((r) => r.trim()).filter(Boolean)
+    for (const rangeExpr of timeRanges) {
+      const [startRaw, endRaw] = rangeExpr.split('-').map((v) => v?.trim() ?? '')
+      const start = normalizeTimeInput(startRaw)
+      const end = normalizeTimeInput(endRaw)
+      if (!start || !end) continue
+      for (const day of days) {
+        const list = entries.get(day) ?? []
+        list.push({ start, end })
+        entries.set(day, list)
+      }
+    }
+  }
+
+  return sortDays(
+    DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
+      day,
+      ranges: sanitizeRanges(entries.get(day) ?? []),
+    })),
+  )
 }
 
 function rangesEqual(a: OpeningHoursRange[], b: OpeningHoursRange[]): boolean {
@@ -195,23 +300,27 @@ export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel
       }))
     }
 
+    const fromNormalized = parseNormalizedString(normalized)
+    if (fromNormalized.length > 0) return fromNormalized
+
+    // Fallback to library intervals if manual parsing fails.
     const entries = new Map<number, OpeningHoursRange[]>()
-    for (const day of info.intervals ?? []) {
-      const ranges = sanitizeRanges(
-        day.ranges.map((range) => ({
-          start: normalizeTimeInput(range.start),
-          end: normalizeTimeInput(range.end),
-        })),
-      )
-      if (ranges.length > 0) {
-        entries.set(day.day, ranges)
-      }
+    const oh = new opening_hours(value)
+    const windowStart = PARSE_ANCHOR
+    const windowEnd = new Date(windowStart.getTime() + PARSE_LOOKAHEAD_DAYS * MS_IN_DAY)
+
+    for (const [start, end] of oh.getOpenIntervals(windowStart, windowEnd)) {
+      const day = start.getDay()
+      const range = buildRangeFromInterval(start, end)
+      const existing = entries.get(day) ?? []
+      existing.push(range)
+      entries.set(day, existing)
     }
 
     return sortDays(
       DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
         day,
-        ranges: entries.get(day) ?? [],
+        ranges: sanitizeRanges(entries.get(day) ?? []),
       })),
     )
   } catch {

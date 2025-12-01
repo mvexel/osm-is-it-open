@@ -7,6 +7,7 @@ type RangeChipProps = {
   isEditing?: boolean
   isChanged?: boolean
   hourCycle?: '12h' | '24h'
+  endSuffix?: string
   onChangeStart: (value: string) => void
   onChangeEnd: (value: string) => void
   onRemove: () => void
@@ -19,6 +20,7 @@ export function RangeChip({
   isEditing = true,
   isChanged = false,
   hourCycle = '24h',
+  endSuffix,
   onChangeStart,
   onChangeEnd,
   onRemove,
@@ -70,6 +72,7 @@ export function RangeChip({
         inputMode="numeric"
         placeholder={hourCycle === '24h' ? '21:00' : '09:00 PM'}
       />
+      {endSuffix && <span style={{ fontSize: 11, color: '#334155' }}>{endSuffix}</span>}
       <div style={{ display: 'flex', marginLeft: 'auto', gap: 6 }}>
         <button
           type="button"

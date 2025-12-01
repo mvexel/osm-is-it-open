@@ -57,11 +57,8 @@ describe('buildOpeningHoursString', () => {
     const saturday = model.find((d) => d.day === 6)
     const sunday = model.find((d) => d.day === 0)
 
-    expect(friday?.ranges).toEqual([{ start: '10:00', end: '24:00' }])
-    expect(saturday?.ranges).toEqual([
-      { start: '00:00', end: '01:00' },
-      { start: '10:00', end: '24:00' },
-    ])
+    expect(friday?.ranges).toEqual([{ start: '10:00', end: '01:00' }])
+    expect(saturday?.ranges).toEqual([{ start: '10:00', end: '01:00' }])
     expect(sunday?.ranges).toEqual([{ start: '10:00', end: '24:00' }])
   })
 
@@ -69,9 +66,7 @@ describe('buildOpeningHoursString', () => {
     const value = 'Su 18:00-02:00'
     const model = parseOpeningHoursModel(value)
     const sunday = model.find((d) => d.day === 0)
-    const monday = model.find((d) => d.day === 1)
 
-    expect(sunday?.ranges).toEqual([{ start: '18:00', end: '24:00' }])
-    expect(monday?.ranges).toEqual([{ start: '00:00', end: '02:00' }])
+    expect(sunday?.ranges).toEqual([{ start: '18:00', end: '02:00' }])
   })
 })
