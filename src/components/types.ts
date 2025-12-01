@@ -36,6 +36,8 @@ export interface OpeningHoursEditorProps {
   className?: string
   /** Original opening_hours instance for comparison (for reset functionality) */
   originalOpeningHours?: OpeningHoursLib
+  /** OSM element ID in format 'node/123' or 'way/456' for linking to osm.org */
+  osmId?: string
 }
 
 /**

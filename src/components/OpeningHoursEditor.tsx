@@ -35,6 +35,7 @@ export function OpeningHoursEditor({
   className = '',
   originalOpeningHours,
   hourCycle = '24h',
+  osmId,
 }: OpeningHoursEditorProps) {
   const editingSource = useMemo(() => (openingHours ? getOpeningHoursString(openingHours) : ''), [openingHours])
   const baselineSource = useMemo(
@@ -67,13 +68,17 @@ export function OpeningHoursEditor({
     if (lastEmittedValueRef.current === formatted) return
     lastEmittedValueRef.current = formatted
 
+    // Don't emit if we started with null/empty opening hours
+    // This prevents emitting "Mo-Su off" for POIs without hours
+    if (!openingHours && formatted === 'Mo-Su off') return
+
     try {
       const newOh = new opening_hours(formatted)
       onChange?.(newOh)
     } catch {
       // Invalid opening hours string, don't emit
     }
-  }, [formatted, onChange])
+  }, [formatted, onChange, openingHours])
 
   useEffect(() => {
     const hasEntering = model.days.some((d) => d.ranges.some((r) => r.status === 'entering'))
@@ -246,7 +251,7 @@ export function OpeningHoursEditor({
       </div>
 
       <div className="output-container">
-        <span>OSM output</span>
+        <span>OSM</span>
         <button type="button" onClick={() => setShowOutput((prev) => !prev)}>
           {showOutput ? 'Hide' : 'Show'}
         </button>
@@ -255,6 +260,13 @@ export function OpeningHoursEditor({
       {showOutput && (
         <div className="output-code-container">
           <code className="output-code">{formatted || '—'}</code>
+          {osmId && (
+            <div className="osm-link">
+              <a href={`https://www.openstreetmap.org/${osmId}`} target="_blank" rel="noopener noreferrer">
+                View on OpenStreetMap ↗
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>

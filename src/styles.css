@@ -148,6 +148,23 @@
   word-break: break-word;
 }
 
+.opening-hours-editor .osm-link {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.opening-hours-editor .osm-link a {
+  font-size: 10px;
+  color: #475569;
+  text-decoration: none;
+}
+
+.opening-hours-editor .osm-link a:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
 .opening-hours-schedule-row {
   display: flex;
   align-items: center;
