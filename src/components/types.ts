@@ -37,3 +37,25 @@ export interface OpeningHoursEditorProps {
   /** Original opening_hours instance for comparison (for reset functionality) */
   originalOpeningHours?: OpeningHoursLib
 }
+
+/**
+ * Props for the OpeningHoursSchedule component
+ */
+export interface OpeningHoursScheduleProps {
+  /** opening_hours instance to display */
+  openingHours: OpeningHoursLib
+  /** Locale for formatting (default: 'en') */
+  locale?: string
+  /** Day label style (default: 'short') */
+  dayLabelStyle?: 'short' | 'long'
+  /** Timezone for display (default: user's local timezone) */
+  timeZone?: string
+  /** Hour cycle for time display (default: '24h') */
+  hourCycle?: '12h' | '24h'
+  /** Reference time (default: current time) */
+  now?: Date
+  /** Start of week (0=Sunday, 1=Monday, default: 1) */
+  startOfWeek?: number
+  /** Additional CSS class name */
+  className?: string
+}

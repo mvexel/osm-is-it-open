@@ -23,7 +23,7 @@
   "scripts": {
     "build": "tsup",
     "clean": "rm -rf dist",
-    "dev": "vite --config examples/vite.config.ts",
+    "dev": "vite --config examples/vite.config.ts --port 5173 --host 127.0.0.1",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run test && npm run build",

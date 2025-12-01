@@ -70,6 +70,31 @@ The main `OpeningHours` component supports inline editing:
 />
 ```
 
+### Schedule Component
+
+Render a week-at-a-glance schedule without any editing UI:
+
+```tsx
+import { OpeningHoursSchedule } from '@osm-is-it-open/hours'
+
+<OpeningHoursSchedule
+  openingHours={oh}
+  locale="en"
+  timeZone="America/New_York"
+  hourCycle="12h"
+  dayLabelStyle="long"
+  startOfWeek={1} // Monday
+/>
+```
+
+Schedule props:
+- `locale` (default: `'en'`)
+- `dayLabelStyle`: `'short' | 'long'` (default: `'short'`)
+- `timeZone` (optional)
+- `hourCycle`: `'12h' | '24h'` (default: `'24h'`)
+- `startOfWeek`: `0 | 1` (default: `1`)
+- `className` for custom styling hooks
+
 ### Working with Location Context
 
 The `opening_hours` library supports location-specific parsing (for public holidays, etc.):
@@ -90,6 +115,10 @@ const oh = new opening_hours('Mo-Fr 09:00-17:00; PH off', nominatim)
 
 <OpeningHours openingHours={oh} />
 ```
+
+Public holiday rules (`PH`) require a country code. Today you pass that context yourself (see `address.country_code` above).
+Longer term we plan to surface a helper using [`date-holidays`](https://www.npmjs.com/package/date-holidays) so you can derive
+holiday context from locale/coordinates automatically while keeping the UI layer slim.
 
 ## Components
 
@@ -129,6 +158,10 @@ Components support optional i18next integration. If `react-i18next` is available
 - `opening_hours.closed_opens` - "Closed • opens {time}"
 - `opening_hours.unknown` - "Hours unavailable"
 
+**Fallback locales:** Basic strings ship for `en`, `fr`, `de`, `es`, `it`, `nl`, `pt`, `sv`, `ja`, and `zh-CN`. Prefer i18next for full coverage.
+
+**Contributing a locale:** Add your strings to `src/locales/index.ts` (or open a PR with the new locale bundle). Include translations for `open_now`, `open_until`, `closed`, `closed_opens`, and `unknown`. i18next will be used when present; the fallback map is only for when i18next is not configured.
+
 ## TypeScript
 
 Full TypeScript support with exported types:
@@ -137,6 +170,7 @@ Full TypeScript support with exported types:
 import type {
   OpeningHoursProps,
   OpeningHoursEditorProps,
+  OpeningHoursScheduleProps,
   OpeningHoursLib,
   nominatim_object
 } from '@osm-is-it-open/hours'

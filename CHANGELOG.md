@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of `@osm-is-it-open/hours` component library
 - `OpeningHours` component for displaying opening status
 - `OpeningHoursEditor` component for editing opening hours
+- `OpeningHoursSchedule` component for displaying weekly schedule
 - Pure UI component architecture (no utility functions)
 - Components accept `opening_hours` instances directly
 - Re-export of `opening_hours` library for convenience

@@ -1,21 +1,36 @@
 import { useMemo } from 'react'
 import type { OpeningHoursProps } from './types'
 import { OpeningHoursEditor } from './OpeningHoursEditor'
+import { getLocaleStrings } from '../locales'
 import '../styles.css'
 
 type OpeningStatus = 'open' | 'closed' | 'unknown'
 
-function getTranslator(): (key: string, defaults?: string) => string {
+type TranslationVars = { time?: string }
+
+function getTranslator(locale: string): (key: string, defaults?: string, vars?: TranslationVars) => string {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
     const i18next = require('i18next')
     if (i18next?.t) {
-      return (key: string, defaults?: string) => i18next.t(key, { defaultValue: defaults ?? key })
+      return (key: string, defaults?: string, vars?: TranslationVars) =>
+        i18next.t(key, { defaultValue: defaults ?? key, ...vars })
     }
   } catch {
     // i18next not available, fall back to defaults
   }
-  return (_key: string, defaults?: string) => defaults ?? ''
+
+  const base = locale?.split('-')[0]?.toLowerCase() ?? 'en'
+  const messages = getLocaleStrings(base)
+
+  return (key: string, defaults?: string, vars?: TranslationVars) => {
+    const template = messages?.[key.replace('opening_hours.', '') as keyof typeof messages]
+    if (!template) return defaults ?? ''
+    if (template.includes('{time}') && vars?.time) {
+      return template.replace('{time}', vars.time)
+    }
+    return template
+  }
 }
 
 function formatTime(
@@ -37,7 +52,7 @@ function buildLabel(
   status: OpeningStatus,
   nextChange: Date | undefined,
   opts: { locale: string; timeZone?: string; hourCycle: '12h' | '24h'; baseDate: Date },
-  translate: (key: string, defaults?: string) => string,
+  translate: (key: string, defaults?: string, vars?: TranslationVars) => string,
 ): string {
   const nextLabel = nextChange ? formatTime(nextChange, opts.locale, opts.timeZone, opts.hourCycle) : null
   const needsDay =
@@ -51,12 +66,12 @@ function buildLabel(
 
   if (status === 'open') {
     return withDay
-      ? translate('opening_hours.open_until', `Open until ${withDay}`)
+      ? translate('opening_hours.open_until', `Open until ${withDay}`, { time: withDay })
       : translate('opening_hours.open_now', 'Open now')
   }
   if (status === 'closed') {
     return withDay
-      ? translate('opening_hours.closed_opens', `Closed • opens ${withDay}`)
+      ? translate('opening_hours.closed_opens', `Closed • opens ${withDay}`, { time: withDay })
       : translate('opening_hours.closed', 'Closed')
   }
   return translate('opening_hours.unknown', 'Hours unavailable')
@@ -73,7 +88,7 @@ export function OpeningHours({
   onChange,
 }: OpeningHoursProps) {
   const currentTime = now ?? new Date()
-  const translate = useMemo(() => getTranslator(), [])
+  const translate = useMemo(() => getTranslator(locale), [locale])
 
   const { status, label } = useMemo(() => {
     try {

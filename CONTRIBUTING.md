@@ -137,6 +137,12 @@ When adding translatable strings:
 2. Add translation keys to README.md
 3. Always provide English defaults
 
+## Locales
+
+- Fallback strings live in `src/locales/index.ts`. Add a new entry with `open_now`, `open_until`, `closed`, `closed_opens`, and `unknown`.
+- Prefer i18next for production apps; the fallback map is only used when i18next is not configured.
+- If you contribute a locale, include a quick note in README.md under Localization.
+
 ## Release Process
 
 (For maintainers)

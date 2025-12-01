@@ -1,9 +1,17 @@
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { OpeningHours, OpeningHoursEditor, opening_hours } from '../src'
+import { OpeningHours, OpeningHoursEditor, OpeningHoursSchedule, opening_hours } from '../src'
 import '../src/styles.css'
 
 type ElementType = 'node' | 'way' | 'relation'
+const LOCALE_OPTIONS = [
+  'en', 'en-US', 'en-GB', 'en-CA',
+  'fr', 'fr-CA', 'de', 'es', 'it',
+  'nl', 'pt', 'sv', 'da', 'fi',
+  'no', 'pl', 'cs', 'sk', 'sl',
+  'hu', 'ro', 'bg', 'el', 'ru',
+  'ja', 'ko', 'zh-CN', 'zh-TW', 'ar',
+]
 
 const DEFAULT_ELEMENT = 'node/4311815199'
 const DEFAULT_HOURS = 'Mo-Fr 09:00-17:00'
@@ -65,6 +73,9 @@ function Demo() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [hourCycle, setHourCycle] = useState<'12h' | '24h'>('24h')
+  const [locale, setLocale] = useState<string>('en')
+  const [dayLabelStyle, setDayLabelStyle] = useState<'short' | 'long'>('short')
+  const [scheduleTitle, setScheduleTitle] = useState<string>('Display only')
 
   const handleFetch = async () => {
     setLoading(true)
@@ -121,6 +132,94 @@ function Demo() {
           components. You can also edit the hours interactively below.
         </p>
       </header>
+
+      <div
+        style={{
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 12,
+          padding: 16,
+          display: 'grid',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gap: 12,
+            gridTemplateColumns: '1fr 1fr',
+            alignItems: 'end',
+          }}
+        >
+          <label style={{ display: 'grid', gap: 6, gridColumn: '1 / span 2' }}>
+            <span style={{ fontWeight: 600 }}>Title</span>
+            <input
+              value={scheduleTitle}
+              onChange={(e) => setScheduleTitle(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: 14,
+              }}
+            />
+          </label>
+          <label style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Locale</span>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value || 'en')}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: 14,
+                background: '#fff',
+              }}
+            >
+              {LOCALE_OPTIONS.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>Day labels</span>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {(['short', 'long'] as const).map((style) => (
+                <button
+                  key={style}
+                  onClick={() => setDayLabelStyle(style)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #cbd5e1',
+                    background: dayLabelStyle === style ? '#0f172a' : '#e2e8f0',
+                    color: dayLabelStyle === style ? '#fff' : '#0f172a',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                  type="button"
+                >
+                  {style === 'short' ? 'Abbrev.' : 'Full'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontWeight: 600 }}>{scheduleTitle}</div>
+        <OpeningHoursSchedule
+          openingHours={openingHours}
+          hourCycle={hourCycle}
+          locale={locale}
+          dayLabelStyle={dayLabelStyle}
+        />
+      </div>
 
       <div
         style={{
@@ -243,6 +342,7 @@ function Demo() {
           <OpeningHours
             openingHours={openingHours}
             hourCycle={hourCycle}
+            locale={locale}
             editable
             onChange={(updated) => {
               setOpeningHours(updated)
