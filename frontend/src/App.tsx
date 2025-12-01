@@ -22,6 +22,8 @@ function App() {
     useOsmAuth()
   const [selectedPlace, setSelectedPlace] = useState<{ city?: string; countryCode?: string } | null>(null)
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_VIEW.zoom)
+  const [editMode, setEditMode] = useState(false)
+  const [editHours, setEditHours] = useState<string>('')
 
   const fetchPOIs = async (
     bbox: [number, number, number, number],
@@ -106,6 +108,8 @@ function App() {
         openStatus: status,
       }
       setSelectedPoi(poi)
+      setEditMode(false)
+      setEditHours(openingHours || '')
       reverseGeocodePlace(poi.lat, poi.lon).then((info) => {
         setSelectedPlace({ city: info?.city, countryCode: info?.countryCode })
       })
@@ -235,7 +239,7 @@ function App() {
               </a>
             </div>
             <OpeningHoursBadge
-              openingHours={selectedPoi.openingHours}
+              openingHours={editMode ? editHours : selectedPoi.openingHours}
               coords={[selectedPoi.lat, selectedPoi.lon]}
               countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
               hourCycle={hourCycle}
@@ -243,24 +247,53 @@ function App() {
           </div>
           <div className="mt-3">
             <OpeningHoursSchedule
-              openingHours={selectedPoi.openingHours}
+              openingHours={editMode ? editHours : selectedPoi.openingHours}
               coords={[selectedPoi.lat, selectedPoi.lon]}
               countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
               hourCycle={hourCycle}
               className="bg-white"
             />
           </div>
-          {!selectedPoi.openingHours && (
-            <div className="mt-2 text-sm text-gray-500">
-              Hours unavailable for this POI.
-            </div>
-          )}
-          {!selectedPoi.openingHours && (
-            <div className="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-2">
-              <span>Quick search:</span>
-              <SearchLinks query={buildSearchQuery(selectedPoi, selectedPlace)} />
-            </div>
-          )}
+          <div className="mt-3 flex flex-col gap-2">
+            {!selectedPoi.openingHours && (
+              <div className="text-sm text-gray-500">Hours unavailable for this POI.</div>
+            )}
+            {osmUser && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditMode((prev) => !prev)}
+                  className="text-sm px-3 py-1 rounded border border-gray-300 bg-white text-gray-800"
+                >
+                  {editMode ? 'Cancel edit' : 'Edit hours'}
+                </button>
+                {editMode && (
+                  <button
+                    type="button"
+                    onClick={() => applyEditedHours(selectedPoi, editHours, (poi) => setSelectedPoi(poi))}
+                    className="text-sm px-3 py-1 rounded border border-gray-900 bg-gray-900 text-white"
+                  >
+                    Apply locally
+                  </button>
+                )}
+              </div>
+            )}
+            {editMode && (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={editHours}
+                  onChange={(e) => setEditHours(e.target.value)}
+                  rows={2}
+                  className="w-full border border-gray-300 rounded p-2 text-sm"
+                  placeholder="Mo-Fr 09:00-17:00; Su off"
+                />
+                <div className="text-xs text-gray-600 flex items-center gap-2">
+                  <span>Quick search:</span>
+                  <SearchLinks query={buildSearchQuery(selectedPoi, selectedPlace)} />
+                </div>
+              </div>
+            )}
+          </div>
           <div className="mt-3 flex justify-end">
             <button
               type="button"
@@ -308,6 +341,12 @@ function buildSearchQuery(poi: POI, place: { city?: string } | null): string {
   return [name, city].filter(Boolean).join(', ')
 }
 
+function applyEditedHoursToPoi(poi: POI, openingHours: string) {
+  const coords: [number, number] = [poi.lat, poi.lon]
+  const status = formatOpeningHours(openingHours, { coords }).status
+  return { ...poi, openingHours, openStatus: status }
+}
+
 function SearchLinks({ query }: { query: string }) {
   const encoded = encodeURIComponent(query || '')
   if (!query) return null
@@ -341,4 +380,10 @@ function SearchLinks({ query }: { query: string }) {
       </a>
     </>
   )
+}
+
+function applyEditedHours(selectedPoi: POI | null, editHours: string, setSelectedPoi: (poi: POI) => void) {
+  if (!selectedPoi) return
+  const updated = applyEditedHoursToPoi(selectedPoi, editHours)
+  setSelectedPoi(updated)
 }
