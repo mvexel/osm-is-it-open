@@ -6,7 +6,7 @@ import { OpeningHoursBadge, OpeningHoursSchedule } from '../src'
 describe('OpeningHoursBadge', () => {
   it('renders open status', () => {
     render(<OpeningHoursBadge openingHours="24/7" />)
-    expect(screen.getByText(/open/i)).toBeTruthy()
+    expect(screen.getByText(/^Open$/i)).toBeTruthy()
   })
 })
 

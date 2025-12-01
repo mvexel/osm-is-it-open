@@ -22,6 +22,11 @@ type EditorProps = {
   hourCycle?: '12h' | '24h'
 }
 
+// Use a fixed anchor week (Mon Jan 1, 2024 UTC) to make parsing deterministic and
+// include overnight spillovers at the end of the week.
+const PARSE_ANCHOR = new Date(2024, 0, 1, 0, 0, 0, 0)
+const PARSE_LOOKAHEAD_DAYS = 8 // capture the full week plus spill into next Monday
+
 const statusStyles: Record<OpeningStatus, { bg: string; text: string }> = {
   open: { bg: '#dcfce7', text: '#166534' },
   closed: { bg: '#fee2e2', text: '#991b1b' },
@@ -89,22 +94,32 @@ function normalizeRange(
   }
 
   const spansMidnight = endMinutes < startMinutes
+  const endLabel = spansMidnight && endMinutes === 0 ? '24:00' : end
 
   return {
-    normalized: { start, end },
+    normalized: { start, end: endLabel },
     startMinutes,
     sortEndMinutes: spansMidnight ? endMinutes + 24 * 60 : endMinutes,
   }
 }
 
 function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
-  return ranges
+  const normalized = ranges
     .map(normalizeRange)
     .filter(
       (range): range is { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } => !!range,
     )
     .sort((a, b) => a.startMinutes - b.startMinutes || a.sortEndMinutes - b.sortEndMinutes)
     .map((range) => range.normalized)
+
+  const deduped: OpeningHoursRange[] = []
+  for (const range of normalized) {
+    const last = deduped[deduped.length - 1]
+    if (!last || last.start !== range.start || last.end !== range.end) {
+      deduped.push(range)
+    }
+  }
+  return deduped
 }
 
 function rangesEqual(a: OpeningHoursRange[], b: OpeningHoursRange[]): boolean {
@@ -166,7 +181,12 @@ export function buildOpeningHoursString(model: OpeningHoursModel): string {
 export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel {
   if (!value) return []
   try {
-    const info = formatOpeningHours(value, { hourCycle: '24h', lookaheadDays: 7, startOfWeek: 1 })
+    const info = formatOpeningHours(value, {
+      now: PARSE_ANCHOR,
+      hourCycle: '24h',
+      lookaheadDays: PARSE_LOOKAHEAD_DAYS,
+      startOfWeek: 1,
+    })
     const normalized = (info.normalized ?? value).trim()
     if (normalized === '24/7') {
       return DAY_ORDER.map((day) => ({
@@ -353,7 +373,7 @@ export function OpeningHoursEditor({ value, onChange, className = '', originalVa
       }}
     >
       <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', padding: '4px 6px 8px' }}>
-        Opening hours (click times to edit)
+        Opening Hours
       </div>
       {isChanged && (
         <div
