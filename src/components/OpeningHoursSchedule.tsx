@@ -157,6 +157,9 @@ export function OpeningHoursSchedule({
   const today = currentTime.getDay()
 
   const intervals = useMemo(() => {
+    if (!openingHours) {
+      return []
+    }
     try {
       return buildSchedule(openingHours, currentTime, {
         locale,

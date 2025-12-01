@@ -5,7 +5,7 @@ import type { opening_hours as OpeningHoursLib } from 'opening_hours'
  */
 export interface OpeningHoursProps {
   /** opening_hours instance to display */
-  openingHours: OpeningHoursLib
+  openingHours: OpeningHoursLib | null
   /** Locale for formatting (default: 'en') */
   locale?: string
   /** Timezone for display (default: user's local timezone) */
@@ -27,7 +27,7 @@ export interface OpeningHoursProps {
  */
 export interface OpeningHoursEditorProps {
   /** opening_hours instance to edit */
-  openingHours: OpeningHoursLib
+  openingHours: OpeningHoursLib | null
   /** Callback when opening hours are modified */
   onChange?: (openingHours: OpeningHoursLib) => void
   /** Hour cycle for time input (default: '24h') */
@@ -43,7 +43,7 @@ export interface OpeningHoursEditorProps {
  */
 export interface OpeningHoursScheduleProps {
   /** opening_hours instance to display */
-  openingHours: OpeningHoursLib
+  openingHours: OpeningHoursLib | null
   /** Locale for formatting (default: 'en') */
   locale?: string
   /** Day label style (default: 'short') */

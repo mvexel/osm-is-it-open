@@ -58,7 +58,7 @@ function buildLabel(
   const needsDay =
     nextChange &&
     nextChange.toLocaleDateString('en-CA', { timeZone: opts.timeZone }) !==
-      opts.baseDate.toLocaleDateString('en-CA', { timeZone: opts.timeZone })
+    opts.baseDate.toLocaleDateString('en-CA', { timeZone: opts.timeZone })
   const dayLabel = nextChange
     ? new Intl.DateTimeFormat(opts.locale, { weekday: 'short', timeZone: opts.timeZone }).format(nextChange)
     : null
@@ -91,6 +91,13 @@ export function OpeningHours({
   const translate = useMemo(() => getTranslator(locale), [locale])
 
   const { status, label } = useMemo(() => {
+    if (!openingHours) {
+      console.log('[OpeningHours] No opening hours provided')
+      return {
+        status: 'unknown' as OpeningStatus,
+        label: translate('opening_hours.unknown', 'Hours unavailable'),
+      }
+    }
     try {
       const isUnknown = openingHours.getUnknown(currentTime)
       const isOpen = openingHours.getState(currentTime)
@@ -107,8 +114,10 @@ export function OpeningHours({
         },
         translate,
       )
+      console.log('[OpeningHours] Computed status:', { status, label, isUnknown, isOpen })
       return { status, label }
-    } catch {
+    } catch (error) {
+      console.error('[OpeningHours] Error computing status:', error)
       return {
         status: 'unknown' as OpeningStatus,
         label: 'Hours unavailable',
@@ -131,12 +140,20 @@ export function OpeningHours({
   const safeLabel = typeof label === 'string' ? label : 'Hours unavailable'
   const labelParts = safeLabel.match(/^(Open until|Closed • opens)\s*(.*)$/i)
   const primary = status === 'open' ? 'Open' : status === 'closed' ? 'Closed' : 'Unknown'
-  const secondary = labelParts ? `${labelParts[1]} ${labelParts[2]}` : safeLabel
+
+  // Extract secondary text - for "Open now" or "Closed" or "Hours unavailable", show empty string
+  let secondary = ''
+  if (labelParts && labelParts[2]) {
+    secondary = labelParts[2]
+  } else if (status !== 'unknown') {
+    // For "Open now" or plain "Closed", show "now"
+    secondary = 'now'
+  }
 
   return (
     <span className={`opening-hours-badge ${statusClassName} ${className}`}>
       <span className="primary">{primary}</span>
-      <span className="secondary">{secondary}</span>
+      {secondary && <span className="secondary">{secondary}</span>}
     </span>
   )
 }

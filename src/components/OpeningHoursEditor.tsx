@@ -36,7 +36,7 @@ export function OpeningHoursEditor({
   originalOpeningHours,
   hourCycle = '24h',
 }: OpeningHoursEditorProps) {
-  const editingSource = useMemo(() => getOpeningHoursString(openingHours), [openingHours])
+  const editingSource = useMemo(() => (openingHours ? getOpeningHoursString(openingHours) : ''), [openingHours])
   const baselineSource = useMemo(
     () => (originalOpeningHours ? getOpeningHoursString(originalOpeningHours) : editingSource),
     [originalOpeningHours, editingSource],
@@ -119,9 +119,9 @@ export function OpeningHoursEditor({
       days: prev.days.map((entry) =>
         entry.day === day
           ? {
-              ...entry,
-              ranges: entry.ranges.map((range, idx) => (idx === rangeIdx ? { ...range, [field]: value } : range)),
-            }
+            ...entry,
+            ranges: entry.ranges.map((range, idx) => (idx === rangeIdx ? { ...range, [field]: value } : range)),
+          }
           : entry,
       ),
     }))
@@ -162,9 +162,9 @@ export function OpeningHoursEditor({
       days: prev.days.map((entry) =>
         entry.day === day
           ? {
-              ...entry,
-              ranges: entry.ranges.map((range, idx) => (idx === rangeIdx ? { ...range, status: 'exiting' } : range)),
-            }
+            ...entry,
+            ranges: entry.ranges.map((range, idx) => (idx === rangeIdx ? { ...range, status: 'exiting' } : range)),
+          }
           : entry,
       ),
     }))
@@ -177,9 +177,9 @@ export function OpeningHoursEditor({
         .map((entry) =>
           entry.day === day
             ? {
-                ...entry,
-                ranges: entry.ranges.filter((_, idx) => idx !== rangeIdx),
-              }
+              ...entry,
+              ranges: entry.ranges.filter((_, idx) => idx !== rangeIdx),
+            }
             : entry,
         )
         .filter((entry) => entry.ranges.length > 0),
