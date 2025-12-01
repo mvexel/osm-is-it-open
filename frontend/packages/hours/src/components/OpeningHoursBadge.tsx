@@ -78,28 +78,32 @@ function toMinutes(value: string): number | null {
 
 function normalizeRange(
   range: OpeningHoursRange,
-): { normalized: OpeningHoursRange; startMinutes: number; endMinutes: number } | null {
+): { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } | null {
   const start = normalizeTimeInput(range.start)
   const end = normalizeTimeInput(range.end)
   const startMinutes = toMinutes(start)
   const endMinutes = toMinutes(end)
 
-  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
+  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes === endMinutes) {
     return null
   }
+
+  const spansMidnight = endMinutes < startMinutes
 
   return {
     normalized: { start, end },
     startMinutes,
-    endMinutes,
+    sortEndMinutes: spansMidnight ? endMinutes + 24 * 60 : endMinutes,
   }
 }
 
 function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
   return ranges
     .map(normalizeRange)
-    .filter((range): range is { normalized: OpeningHoursRange; startMinutes: number; endMinutes: number } => !!range)
-    .sort((a, b) => a.startMinutes - b.startMinutes)
+    .filter(
+      (range): range is { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } => !!range,
+    )
+    .sort((a, b) => a.startMinutes - b.startMinutes || a.sortEndMinutes - b.sortEndMinutes)
     .map((range) => range.normalized)
 }
 
