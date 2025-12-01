@@ -1,0 +1,86 @@
+{
+  "name": "@osm-is-it-open/hours",
+  "version": "0.1.0",
+  "description": "React UI components for displaying and editing OpenStreetMap opening hours",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dist/styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "dev": "vite --config examples/vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run test && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "react",
+    "openstreetmap",
+    "osm",
+    "opening-hours",
+    "opening_hours",
+    "ui-component",
+    "react-component",
+    "hours",
+    "schedule",
+    "editor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mvexel/osm-is-it-open.git"
+  },
+  "author": "Martijn van Exel <m@rtijn.org>",
+  "license": "MIT",
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "i18next": {
+      "optional": true
+    },
+    "react-i18next": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "opening_hours": "^3.8.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.3.1",
+    "@types/node": "^20.17.10",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "i18next": "^23.0.0",
+    "jsdom": "^27.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-i18next": "^14.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^1.6.0"
+  }
+}

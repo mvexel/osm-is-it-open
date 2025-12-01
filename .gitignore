@@ -1,26 +1,15 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-*.egg-info/
-dist/
-build/
-
-# Node
+# Dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+package-lock.json
 
 # Build outputs
-frontend/dist/
-frontend/build/
+dist/
+build/
+*.tgz
 
 # IDEs
 .vscode/
@@ -41,3 +30,15 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+tmp/
+*.tmp
+
+# Claude instructions and data
+.claude/

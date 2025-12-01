@@ -1,0 +1,34 @@
+# Source files
+src/
+tests/
+examples/
+
+# Build configuration
+tsconfig.json
+tsconfig.package.json
+tsup.config.ts
+vitest.config.ts
+
+# Development files
+.git
+.github
+.claude
+.vscode
+.idea
+*.log
+*.tgz
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Documentation (except what's in files array)
+CONTRIBUTING.md
+
+# Misc
+.DS_Store
+node_modules
+.env
+.env.local
