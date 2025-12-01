@@ -3,11 +3,13 @@ import Map from './components/Map'
 import { POI } from './types/poi'
 import { OpeningHoursBadge, OpeningHoursSchedule, formatOpeningHours } from '../packages/hours/src'
 import { useOsmAuth } from './hooks/useOsmAuth'
+import { reverseGeocodeCountry } from './utils/nominatim'
 
 const MIN_ZOOM = 16
 const DEFAULT_VIEW = { latitude: 40.7128, longitude: -74.006, zoom: MIN_ZOOM }
 const MAP_HASH_PREFIX = '#map='
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+const DEFAULT_COUNTRY = (import.meta.env.VITE_OSM_DEFAULT_COUNTRY || '').toLowerCase() || undefined
 
 function App() {
   const [pois, setPois] = useState<POI[]>([])
@@ -16,6 +18,7 @@ function App() {
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [hourCycle, setHourCycle] = useState<'12h' | '24h'>('24h')
   const [initialViewState, setInitialViewState] = useState(DEFAULT_VIEW)
+  const [viewCountryCode, setViewCountryCode] = useState<string | undefined>(DEFAULT_COUNTRY)
   const { user: osmUser, login: loginOsm, logout: logoutOsm, authEnabled, loading: authLoading, error: authError } =
     useOsmAuth()
 
@@ -57,6 +60,12 @@ function App() {
     const url = new URL(window.location.href)
     url.hash = hash
     window.history.replaceState(null, '', url.toString())
+
+    reverseGeocodeCountry(view.latitude, view.longitude).then((code) => {
+      if (code && code !== viewCountryCode) {
+        setViewCountryCode(code)
+      }
+    })
   }
 
   const loadElement = async (type: 'n' | 'w' | 'r', id: number) => {
@@ -81,7 +90,8 @@ function App() {
         tags['opening_hours:conditional'] ||
         ''
       const coords: [number, number] = [element.lat, element.lon]
-      const status = formatOpeningHours(openingHours, { coords }).status
+      const countryCode = countryCodeFromTags(tags, viewCountryCode)
+      const status = formatOpeningHours(openingHours, { coords, countryCode }).status
       const poi: POI = {
         id: `${type === 'n' ? 'node' : type === 'w' ? 'way' : 'relation'}/${id}`,
         lat: element.lat,
@@ -124,6 +134,11 @@ function App() {
         loadElement(type as 'n' | 'w' | 'r', id)
       }
     }
+
+    // Prime country code from initial view
+    reverseGeocodeCountry(initialViewState.latitude, initialViewState.longitude).then((code) => {
+      if (code) setViewCountryCode(code)
+    })
   }, [])
 
   return (
@@ -178,6 +193,7 @@ function App() {
         onSelectPoi={setSelectedPoi}
         onViewChange={handleViewChange}
         initialViewState={initialViewState}
+        currentZoom={initialViewState.zoom}
       />
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-10">
@@ -193,7 +209,6 @@ function App() {
         <div className="absolute bottom-4 left-4 max-w-md w-[90%] sm:w-96 bg-white/95 backdrop-blur border border-gray-200 rounded-xl shadow-lg p-4 z-20">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-sm text-gray-500">Selected POI</div>
               <div className="font-semibold text-lg text-gray-900">{selectedPoi.name || 'Unnamed POI'}</div>
               <a
                 className="text-xs text-blue-600 break-words hover:underline"
@@ -207,6 +222,7 @@ function App() {
             <OpeningHoursBadge
               openingHours={selectedPoi.openingHours}
               coords={[selectedPoi.lat, selectedPoi.lon]}
+              countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
               hourCycle={hourCycle}
             />
           </div>
@@ -214,6 +230,7 @@ function App() {
             <OpeningHoursSchedule
               openingHours={selectedPoi.openingHours}
               coords={[selectedPoi.lat, selectedPoi.lon]}
+              countryCode={countryCodeFromTags(selectedPoi.tags, viewCountryCode)}
               hourCycle={hourCycle}
               className="bg-white"
             />
@@ -251,4 +268,15 @@ function parseMapHash(hash: string): { latitude: number; longitude: number; zoom
   const longitude = Number(lonStr)
   if ([zoom, latitude, longitude].some((v) => Number.isNaN(v))) return null
   return { latitude, longitude, zoom }
+}
+
+function countryCodeFromTags(tags: Record<string, string> | undefined, fallback?: string): string | undefined {
+  const code =
+    tags?.['addr:country'] ||
+    tags?.['is_in:country_code'] ||
+    tags?.['country'] ||
+    tags?.['country_code'] ||
+    fallback ||
+    DEFAULT_COUNTRY
+  return code ? code.toLowerCase() : undefined
 }

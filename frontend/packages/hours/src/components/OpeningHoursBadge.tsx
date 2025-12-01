@@ -6,7 +6,7 @@ type BadgeProps = {
   className?: string
 } & Pick<
   FormatOptions,
-  'locale' | 'timeZone' | 'twelveHourClock' | 'hourCycle' | 'now' | 'lookaheadDays' | 'startOfWeek'
+  'locale' | 'timeZone' | 'twelveHourClock' | 'hourCycle' | 'now' | 'lookaheadDays' | 'startOfWeek' | 'countryCode'
 >
 
 const statusStyles: Record<string, { bg: string; text: string }> = {
@@ -23,23 +23,31 @@ export function OpeningHoursBadge({
 }: BadgeProps) {
   const info = formatOpeningHours(openingHours, { coords, ...opts })
   const styles = statusStyles[info.status]
+  const labelParts = info.label.match(/^(Open until|Closed • opens)\s*(.*)$/i)
+  const primary = info.status === 'open' ? 'Open' : info.status === 'closed' ? 'Closed' : 'Unknown'
+  const secondary = labelParts ? `${labelParts[1]} ${labelParts[2]}` : info.label
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${className}`}
-      style={{ backgroundColor: styles.bg, color: styles.text }}
+      className={className}
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '2px',
+        padding: '8px 12px',
+        borderRadius: '6px',
+        background: styles.bg,
+        color: styles.text,
+        minWidth: '140px',
+        textAlign: 'center',
+      }}
     >
-      <span
-        aria-hidden
-        style={{
-          display: 'inline-block',
-          width: '10px',
-          height: '10px',
-          borderRadius: '9999px',
-          backgroundColor: styles.text,
-        }}
-      />
-      <span>{info.label}</span>
+      <span style={{ fontSize: '14px', fontWeight: 600 }}>{primary}</span>
+      <span style={{ fontSize: '12px', fontWeight: 400, opacity: 0.8, lineHeight: 1.2 }}>
+        {secondary}
+      </span>
     </span>
   )
 }

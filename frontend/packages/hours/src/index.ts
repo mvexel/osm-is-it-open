@@ -26,6 +26,7 @@ export interface FormatOptions {
   twelveHourClock?: boolean
   hourCycle?: '12h' | '24h'
   coords?: [number, number]
+  countryCode?: string
   lookaheadDays?: number
   maxIntervals?: number
   startOfWeek?: number // 0 = Sunday
@@ -61,13 +62,14 @@ export function formatOpeningHours(
   const lookaheadDays = opts.lookaheadDays ?? DEFAULT_LOOKAHEAD_DAYS
   const maxIntervals = opts.maxIntervals ?? DEFAULT_MAX_INTERVALS
   const startOfWeek = normalizeStartOfWeek(opts.startOfWeek)
+  const countryCode = opts.countryCode?.toLowerCase()
   const hourCycle: '12h' | '24h' = opts.hourCycle
     ? opts.hourCycle
     : opts.twelveHourClock
       ? '12h'
       : '24h'
 
-  const nominatim = buildNominatim(opts.coords)
+  const nominatim = buildNominatim(opts.coords, countryCode)
 
   try {
     const oh = new opening_hours(openingHours, nominatim ?? undefined)
@@ -79,6 +81,7 @@ export function formatOpeningHours(
       locale,
       timeZone: opts.timeZone,
       hourCycle,
+      baseDate: now,
     })
 
     const intervals = buildSchedule(oh, now, {
@@ -126,14 +129,14 @@ export function normalizeOpeningHours(openingHours?: string | null): string {
   }
 }
 
-function buildNominatim(coords?: [number, number]): nominatim_object | null {
+function buildNominatim(coords?: [number, number], countryCode?: string): nominatim_object | null {
   if (!coords) return null
   const [lat, lon] = coords
   return {
     lat,
     lon,
     address: {
-      country_code: '',
+      country_code: countryCode ?? '',
       state: '',
     },
   }
@@ -228,17 +231,23 @@ function buildSchedule(
 function buildLabel(
   status: OpeningStatus,
   nextChange: Date | undefined,
-  opts: { locale: string; timeZone?: string; hourCycle: '12h' | '24h' },
+  opts: { locale: string; timeZone?: string; hourCycle: '12h' | '24h'; baseDate: Date },
 ): string {
-  const nextLabel = nextChange
-    ? formatTime(nextChange, opts.locale, opts.timeZone, opts.hourCycle)
+  const nextLabel = nextChange ? formatTime(nextChange, opts.locale, opts.timeZone, opts.hourCycle) : null
+  const needsDay =
+    nextChange &&
+    nextChange.toLocaleDateString('en-CA', { timeZone: opts.timeZone }) !==
+      opts.baseDate.toLocaleDateString('en-CA', { timeZone: opts.timeZone })
+  const dayLabel = nextChange
+    ? new Intl.DateTimeFormat(opts.locale, { weekday: 'short', timeZone: opts.timeZone }).format(nextChange)
     : null
+  const withDay = needsDay && nextLabel ? `${dayLabel} ${nextLabel}` : nextLabel
 
   if (status === 'open') {
-    return nextLabel ? `Open until ${nextLabel}` : 'Open now'
+    return withDay ? `Open until ${withDay}` : 'Open now'
   }
   if (status === 'closed') {
-    return nextLabel ? `Closed • opens ${nextLabel}` : 'Closed'
+    return withDay ? `Closed • opens ${withDay}` : 'Closed'
   }
   return 'Hours unavailable'
 }
