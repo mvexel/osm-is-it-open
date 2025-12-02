@@ -1,9 +1,15 @@
-import opening_hours from 'opening_hours'
 import type { nominatim_object } from 'opening_hours'
+import opening_hours from 'opening_hours'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './components/openingHoursTypes'
+import { startOfDayLocal, daySpan } from './utils/date'
 
-// Use a fixed anchor week (Mon Jan 1, 2024 UTC) to make parsing deterministic and
-// include overnight spillovers at the end of the week.
+
+/**
+ * Deterministic anchor week used for library interval queries.
+ *
+ * Parsing/open-interval queries use this fixed week so parsing is stable in tests
+ * and to capture ranges that spill into the following Monday.
+ */
 const PARSE_ANCHOR = new Date(2024, 0, 1, 0, 0, 0, 0)
 const PARSE_LOOKAHEAD_DAYS = 8 // capture the full week plus spill into next Monday
 const MS_IN_DAY = 24 * 60 * 60 * 1000
@@ -13,8 +19,13 @@ const PARSE_CONTEXT: nominatim_object = {
   address: { country_code: 'us', state: '' },
 }
 
+/**
+ * Order of days for display and processing (Monday first, Sunday last).
+ * Maps to JavaScript Date.getDay() values: Mo (1) to Su (0).
+ */
 export const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0] // Mo-Su
 
+/** Maps day number (0-6) to OSM two-letter day abbreviation. */
 export const DAY_OSM_LABELS: Record<number, string> = {
   0: 'Su',
   1: 'Mo',
@@ -25,6 +36,7 @@ export const DAY_OSM_LABELS: Record<number, string> = {
   6: 'Sa',
 }
 
+/** Maps day label (short or long form) to day number (0-6). */
 const DAY_LABEL_TO_NUMBER: Record<string, number> = {
   Su: 0,
   Sun: 0,
@@ -46,6 +58,18 @@ function pad(value: number): string {
   return value.toString().padStart(2, '0')
 }
 
+/**
+ * Normalize a time input string into "HH:MM" 24-hour format.
+ *
+ * - Accepts various user input formats (e.g., "9", "9am", "09:30", "14:5", "2:30 pm").
+ * - Clamps hours to 0-23 and minutes to 0-59.
+ * - Interprets "12am" as "00:00" and "12pm" as "12:00".
+ * - Returns "24:00" only for exact midnight input without am/pm.
+ * - Returns empty string for unparseable inputs.
+ *
+ * @param value user input time string
+ * @returns normalized "HH:MM" string or empty string if invalid
+ */
 export function normalizeTimeInput(value: string): string {
   const trimmed = value.trim()
   if (!trimmed) return ''
@@ -97,12 +121,27 @@ export function normalizeTimeInput(value: string): string {
   return `${pad(hour)}:${pad(minute)}`
 }
 
+/**
+ * Convert a "HH:MM" time string to total minutes.
+ * 
+ * @param value "HH:MM" formatted time string
+ * @returns number of minutes since midnight, or null if invalid
+ */
 export function toMinutes(value: string): number | null {
   const [h, m] = value.split(':').map((n) => Number(n))
   if (Number.isNaN(h) || Number.isNaN(m)) return null
   return h * 60 + m
 }
 
+/**
+ * Normalize and validate a single opening hours range.
+ *
+ * - Normalizes start and end times using normalizeTimeInput.
+ * - Validates that start < end after normalization.
+ *
+ * @param range raw opening hours range with start and end times
+ * @returns normalized range with minute values, or null if invalid
+ */
 export function normalizeRange(
   range: OpeningHoursRange,
 ): { normalized: OpeningHoursRange; startMinutes: number; sortEndMinutes: number } | null {
@@ -121,7 +160,14 @@ export function normalizeRange(
     sortEndMinutes: endMinutes,
   }
 }
-
+/**
+ * Normalize a set of ranges:
+ * - Removes invalid ranges.
+ * - Sorts by start then end time.
+ * - Deduplicates adjacent identical ranges.
+ *
+ * Returns an array of valid, normalized "HH:MM" ranges (end may be "24:00").
+ */
 export function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[] {
   const normalized = ranges
     .map(normalizeRange)
@@ -141,20 +187,17 @@ export function sanitizeRanges(ranges: OpeningHoursRange[]): OpeningHoursRange[]
   return deduped
 }
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function daySpan(start: Date, end: Date): number {
-  return Math.floor((startOfDay(end).getTime() - startOfDay(start).getTime()) / MS_IN_DAY)
-}
-
+/** Formats a Date as "HH:MM" string. */
 function formatClock(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/**
+ * Build a day range object from two Date intervals.
+ *
+ * - Formats start as "HH:MM".
+ * - Converts end-of-day exact-midnight spans (end is next day at 00:00) to "24:00".
+ */
 function buildRangeFromInterval(start: Date, end: Date): OpeningHoursRange {
   const span = daySpan(start, end)
   const startLabel = formatClock(start)
@@ -167,6 +210,14 @@ function buildRangeFromInterval(start: Date, end: Date): OpeningHoursRange {
   }
 }
 
+/**
+ * Expand OSM weekday expressions like "Mo-Fr,Su" or "Mon-Wed" into numeric day indexes.
+ *
+ * Accepts both short and long labels (Su|Sun, Mo|Mon, ...).
+ *
+ * @param expr comma-separated day expression (e.g., "Mo-Fr,Su")
+ * @returns array of day numbers (0-6) in numerical order
+ */
 function expandDays(expr: string): number[] {
   const days: number[] = []
   const parts = expr.split(',').map((p) => p.trim())
@@ -191,6 +242,15 @@ function expandDays(expr: string): number[] {
   return days
 }
 
+/**
+ * Parse a normalized "prettified" opening_hours string into the internal model.
+ *
+ * - Splits segments by `;`.
+ * - Extracts day ranges, time ranges and collects unmatched segments as modifiers.
+ *
+ * @param normalized prettified opening_hours string
+ * @returns OpeningHoursModel with days and modifiers
+ */
 function parseNormalizedString(normalized: string): OpeningHoursModel {
   const entries = new Map<number, OpeningHoursRange[]>()
   const modifiers: string[] = []
@@ -245,22 +305,36 @@ function parseNormalizedString(normalized: string): OpeningHoursModel {
   }
 }
 
+/** Tests if two range arrays are structurally equal. */
 function rangesEqual(a: OpeningHoursRange[], b: OpeningHoursRange[]): boolean {
   if (a.length !== b.length) return false
   return a.every((range, idx) => range.start === b[idx].start && range.end === b[idx].end)
 }
 
+/** Sorts days according to DAY_ORDER (Monday-first). */
 function sortDays(days: OpeningHoursDay[]): OpeningHoursDay[] {
   const order = new Map(DAY_ORDER.map((day, idx) => [day, idx]))
   return [...days].sort((a, b) => (order.get(a.day)! - order.get(b.day)!))
 }
 
+/** Formats day range label for OSM (e.g., "Mo", "Mo-Fr"). */
 function buildDayRangeLabel(startIdx: number, endIdx: number): string {
   const startDay = DAY_OSM_LABELS[DAY_ORDER[startIdx]]
   const endDay = DAY_OSM_LABELS[DAY_ORDER[endIdx]]
   return startIdx === endIdx ? startDay : `${startDay}-${endDay}`
 }
 
+/**
+ * Build a prettified opening_hours string from the internal model.
+ * 
+ * - Groups consecutive days with identical hours.
+ * - Represents full-week 24/7 openings as '24/7'.
+ * - Omits days with no opening hours.
+ * - Appends any modifiers at the end.
+ *
+ * @param model internal OpeningHoursModel
+ * @returns prettified opening_hours string
+ */
 export function buildOpeningHoursString(model: OpeningHoursModel): string {
   const days = sortDays(model.days)
   const cleaned = days.map((day) => ({
@@ -304,6 +378,16 @@ export function buildOpeningHoursString(model: OpeningHoursModel): string {
   return [daySegments, modifierSegments].filter(Boolean).join('; ')
 }
 
+/**
+ * Parse an opening_hours source string into the editor's internal model.
+ *
+ * - Returns an OpeningHoursModel suitable for the UI.
+ * - Normalizes end-time '00:00' to '24:00' for internal representation.
+ * - Recovers gracefully from empty/invalid input (no throw).
+ *
+ * @param source prettified opening_hours string (may be empty)
+ * @returns OpeningHoursModel ready for editing
+ */
 export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel {
   const emptyModel = { days: [], modifiers: [] }
   if (!value) return emptyModel

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import opening_hours from 'opening_hours'
 import type { OpeningHoursScheduleProps } from './types'
 import '../styles.css'
+import { startOfDay } from '../utils/date'
 
 interface DayRange {
   start: string
@@ -32,26 +33,6 @@ function formatTime(
 
 function dayLabel(date: Date, locale: string, style: 'short' | 'long', timeZone?: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: style, timeZone }).format(date)
-}
-
-function startOfDay(date: Date, timeZone?: string): Date {
-  if (!timeZone) {
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
-
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
-
-  const year = Number(parts.find((p) => p.type === 'year')?.value)
-  const month = Number(parts.find((p) => p.type === 'month')?.value)
-  const day = Number(parts.find((p) => p.type === 'day')?.value)
-  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
 }
 
 function nextDateForDay(base: Date, targetDay: number, timeZone?: string): Date {
@@ -170,7 +151,7 @@ export function OpeningHoursSchedule({
   timeZone,
   hourCycle,
   now,
-  startOfWeek = 1,
+  firstDayOfWeek: startOfWeek = 1,
   className = '',
 }: OpeningHoursScheduleProps) {
   const currentTime = now ?? new Date()

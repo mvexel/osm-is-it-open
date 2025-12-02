@@ -16,7 +16,7 @@ export interface OpeningHoursScheduleProps extends BaseOpeningHoursProps {
   timeZone?: string
   hourCycle?: Exclude<HourCycle, HourCycle.Auto> | '12h' | '24h'
   now?: Date
-  startOfWeek?: number
+  firstDayOfWeek?: number
   className?: string
 }
 
