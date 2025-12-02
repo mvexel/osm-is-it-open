@@ -5,6 +5,15 @@ import { DAY_ORDER, buildOpeningHoursString, parseOpeningHoursModel, normalizeRa
 import type { OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
 import '../styles.css'
 
+/**
+ * Safe getter for opening_hours.prettifyValue().
+ *
+ * Returns a prettified string if the provided opening_hours instance works,
+ * otherwise returns an empty string. Swallows errors from the upstream lib.
+ *
+ * @param oh opening_hours instance
+ * @returns prettified opening hours or empty string
+ */
 function getOpeningHoursString(oh: opening_hours): string {
   try {
     return oh.prettifyValue() || ''
@@ -20,6 +29,19 @@ type RangeValidation = {
   overlapInvalid: boolean
 }
 
+/**
+ * Validate a single time range relative to sibling ranges.
+ *
+ * - Normalizes times and converts to minutes for comparison.
+ * - Flags start/end invalid if parsing fails.
+ * - Sets orderInvalid if start >= end (when both parse).
+ * - Sets overlapInvalid if the range intersects any other valid sibling.
+ *
+ * @param range range to validate
+ * @param siblings array of sibling ranges (same day)
+ * @param idx index of the range inside siblings
+ * @returns boolean flags describing validation problems
+ */
 function getRangeValidation(range: OpeningHoursRange, siblings: OpeningHoursRange[], idx: number): RangeValidation {
   const normalizedStart = normalizeTimeInput(range.start)
   const normalizedEnd = normalizeTimeInput(range.end)
@@ -57,6 +79,16 @@ function getRangeValidation(range: OpeningHoursRange, siblings: OpeningHoursRang
   return { startInvalid, endInvalid, orderInvalid, overlapInvalid }
 }
 
+/**
+ * Checks whether the model contains any invalid ranges.
+ *
+ * Returns true for:
+ * - ranges that fail normalizeRange (unparseable/structural issues), or
+ * - ranges that are flagged by getRangeValidation.
+ *
+ * @param model parsed internal opening-hours model
+ * @returns true if any invalid range exists
+ */
 function modelHasInvalidRange(model: OpeningHoursModel): boolean {
   return model.days.some((day) =>
     day.ranges.some((range, idx) => {
@@ -67,6 +99,14 @@ function modelHasInvalidRange(model: OpeningHoursModel): boolean {
   )
 }
 
+/**
+ * Validate requested locale string for Intl.DateTimeFormat.
+ *
+ * Returns the given locale if valid, otherwise falls back to 'en'.
+ *
+ * @param locale input locale string
+ * @returns safe locale to use with Intl
+ */
 function resolveLocale(locale: string): string {
   try {
     new Intl.DateTimeFormat(locale)
@@ -75,6 +115,42 @@ function resolveLocale(locale: string): string {
     return 'en'
   }
 }
+
+/**
+ * Editor UI for OpenStreetMap `opening_hours` (uses the `opening_hours` npm lib).
+ *
+ * Props
+ * @param openingHours optional `opening_hours` instance used as the initial source (prettified).
+ * @param onChange called with a new `opening_hours` instance whenever the editor produces a valid, changed value (not on first mount).
+ * @param locale locale string for weekday labels (falls back to 'en' if invalid).
+ * @param dayLabelStyle DateTimeFormat weekday option ('short' | 'long', etc.).
+ * @param className optional extra CSS classes for the container.
+ *
+ * Behaviour / notes
+ * - Internal model converts end-time '00:00' to '24:00' for end-of-day ranges.
+ * - Editor will not call `onChange` until the model has no invalid ranges.
+ * - Parsing/formatting errors are swallowed until the user fixes input.
+ * @see https://github.com/opening-hours/opening_hours.js for library docs
+ * @see ../model#parseOpeningHoursModel for parsing behaviour
+ * @see ../model#buildOpeningHoursString for formatting behaviour
+ * 
+ * @returns JSX.Element
+ * 
+ * @example
+ * import opening_hours from 'opening_hours'
+ *
+ * const oh = new opening_hours('Mo-Fr 09:00-17:00')
+ * <OpeningHoursEditor openingHours={oh} onChange={(next) => console.log(next.prettifyValue())} />
+ *
+ * // Notes:
+ * // - onChange is not called on first mount.
+ * // - end-time '00:00' is stored as '24:00' in the internal model.
+ * 
+ * @example
+ * // getRangeValidation flags an invalid end or overlapping ranges:
+ * getRangeValidation({ start: '09:00', end: '08:00' }, [{ start: '09:00', end: '10:00' }], 0)
+ * // => { startInvalid: false, endInvalid: false, orderInvalid: true, overlapInvalid: false }
+ */
 
 export function OpeningHoursEditor({
   openingHours,
@@ -119,6 +195,18 @@ export function OpeningHoursEditor({
     }
   }, [model, onChange])
 
+  /**
+ * Update a day's time range in the internal model.
+ *
+ * Behavior notes:
+ * - Converts end value '00:00' -> '24:00' to represent "end of day".
+ * - Updates the model immutably.
+ *
+ * @param day weekday number (0-6)
+ * @param idx index of the range on that day
+ * @param field 'start' | 'end'
+ * @param value time string from input
+ */
   const updateRange = (day: number, idx: number, field: 'start' | 'end', value: string) => {
     // Convert 00:00 to 24:00 for end times (midnight at end of day)
     const actualValue = field === 'end' && value === '00:00' ? '24:00' : value
