@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { OpeningHoursEditor, OpeningHoursSchedule, opening_hours } from '../src'
+import { OpeningHoursEditor, OpeningHoursSchedule, opening_hours, HourCycle } from '../src'
 import '../src/styles.css'
 
 const DEFAULT_HOURS = 'Mo-Fr 09:00-17:00; Sa 10:00-14:00'
@@ -8,7 +8,7 @@ const DEFAULT_HOURS = 'Mo-Fr 09:00-17:00; Sa 10:00-14:00'
 function Demo() {
   const [locale, setLocale] = useState('en')
   const [localeInput, setLocaleInput] = useState('en')
-  const [hourCycle, setHourCycle] = useState<'auto' | '12h' | '24h'>('auto')
+  const [hourCycle, setHourCycle] = useState<HourCycle>(HourCycle.Auto)
   const [dayLabelStyle, setDayLabelStyle] = useState<'short' | 'long'>('short')
   const [value, setValue] = useState(() => new opening_hours(DEFAULT_HOURS))
   const [formatted, setFormatted] = useState(() => {
@@ -74,10 +74,10 @@ function Demo() {
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span>Hour cycle</span>
-              <select value={hourCycle} onChange={(e) => setHourCycle(e.target.value as 'auto' | '12h' | '24h')} style={{ padding: 6 }}>
-                <option value="auto">Auto (from locale)</option>
-                <option value="24h">24h</option>
-                <option value="12h">12h</option>
+              <select value={hourCycle} onChange={(e) => setHourCycle(e.target.value as HourCycle)} style={{ padding: 6 }}>
+                <option value={HourCycle.Auto}>Auto (from locale)</option>
+                <option value={HourCycle.TwentyFourHour}>24h</option>
+                <option value={HourCycle.TwelveHour}>12h</option>
               </select>
             </label>
 
@@ -142,7 +142,7 @@ function Demo() {
             <OpeningHoursSchedule
               openingHours={value}
               locale={locale}
-              hourCycle={hourCycle === 'auto' ? undefined : hourCycle}
+              hourCycle={hourCycle === HourCycle.Auto ? undefined : hourCycle}
               dayLabelStyle={dayLabelStyle}
             />
           </div>

@@ -8,3 +8,4 @@ export { OpeningHoursEditor } from './components/OpeningHoursEditor'
 
 // TypeScript types for component props
 export type { OpeningHoursScheduleProps, OpeningHoursEditorProps } from './components/types'
+export { HourCycle } from './components/types'

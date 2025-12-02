@@ -1,6 +1,18 @@
 import type { opening_hours as OpeningHoursLib } from 'opening_hours'
 
 /**
+ * Hour cycle options for time display
+ */
+export enum HourCycle {
+  /** Auto-detect from locale */
+  Auto = 'auto',
+  /** 12-hour format (AM/PM) */
+  TwelveHour = '12h',
+  /** 24-hour format */
+  TwentyFourHour = '24h',
+}
+
+/**
  * Props for the OpeningHoursEditor component
  */
 export interface OpeningHoursEditorProps {
@@ -29,7 +41,7 @@ export interface OpeningHoursScheduleProps {
   /** Timezone for display (default: user's local timezone) */
   timeZone?: string
   /** Hour cycle for time display (default: auto-detect from locale) */
-  hourCycle?: '12h' | '24h'
+  hourCycle?: Exclude<HourCycle, HourCycle.Auto> | '12h' | '24h'
   /** Reference time (default: current time) */
   now?: Date
   /** Start of week (0=Sunday, 1=Monday, default: 1) */
