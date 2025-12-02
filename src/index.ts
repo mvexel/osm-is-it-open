@@ -3,8 +3,8 @@ export { default as opening_hours } from 'opening_hours'
 export type { nominatim_object, opening_hours as OpeningHoursLib } from 'opening_hours'
 
 // React Components
-export { OpeningHoursEditor } from './components/OpeningHoursEditor'
 export { OpeningHoursSchedule } from './components/OpeningHoursSchedule'
+export { OpeningHoursEditor } from './components/OpeningHoursEditor'
 
 // TypeScript types for component props
-export type { OpeningHoursEditorProps, OpeningHoursScheduleProps } from './components/types'
+export type { OpeningHoursScheduleProps, OpeningHoursEditorProps } from './components/types'

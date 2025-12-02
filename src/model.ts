@@ -1,4 +1,5 @@
 import opening_hours from 'opening_hours'
+import type { nominatim_object } from 'opening_hours'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './components/openingHoursTypes'
 
 // Use a fixed anchor week (Mon Jan 1, 2024 UTC) to make parsing deterministic and
@@ -6,7 +7,11 @@ import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './co
 const PARSE_ANCHOR = new Date(2024, 0, 1, 0, 0, 0, 0)
 const PARSE_LOOKAHEAD_DAYS = 8 // capture the full week plus spill into next Monday
 const MS_IN_DAY = 24 * 60 * 60 * 1000
-const PARSE_CONTEXT = { address: { country_code: 'us' } }
+const PARSE_CONTEXT: nominatim_object = {
+  lat: 0,
+  lon: 0,
+  address: { country_code: 'us', state: '' },
+}
 
 export const DAY_ORDER: number[] = [1, 2, 3, 4, 5, 6, 0] // Mo-Su
 
@@ -43,19 +48,53 @@ function pad(value: number): string {
 
 export function normalizeTimeInput(value: string): string {
   const trimmed = value.trim()
-  const match = trimmed.match(/(\d{1,2}):(\d{2})(?:\s*([ap]m))?/i)
-  if (!match) return ''
+  if (!trimmed) return ''
 
-  let hour = Number(match[1])
-  const minute = match[2]
-  const suffix = match[3]?.toLowerCase()
+  const suffixMatch = trimmed.match(/\s*(am|pm)$/i)
+  const suffix = suffixMatch ? suffixMatch[1].toLowerCase() : null
+  const numericPart = suffixMatch ? trimmed.slice(0, suffixMatch.index).trim() : trimmed
+  if (!numericPart) return ''
+
+  let hourDigits: string
+  let minuteDigits: string
+
+  if (numericPart.includes(':')) {
+    const [hourRaw, minuteRaw = ''] = numericPart.split(':')
+    hourDigits = hourRaw.replace(/\D/g, '').slice(0, 2)
+    minuteDigits = minuteRaw.replace(/\D/g, '').slice(0, 2)
+    if (!hourDigits) return ''
+    if (minuteDigits.length === 1) minuteDigits = `${minuteDigits}0`
+    if (minuteDigits.length === 0) minuteDigits = '00'
+  } else {
+    let digits = numericPart.replace(/\D/g, '')
+    if (digits.length === 0) return ''
+    if (digits.length > 4) digits = digits.slice(0, 4)
+    if (digits.length <= 2) {
+      hourDigits = digits
+      minuteDigits = '00'
+    } else {
+      hourDigits = digits.slice(0, digits.length - 2)
+      minuteDigits = digits.slice(-2)
+    }
+  }
+
+  let hour = Number(hourDigits)
+  if (Number.isNaN(hour)) return ''
+
+  let minute = Number(minuteDigits)
+  if (Number.isNaN(minute)) minute = 0
+  minute = Math.min(Math.max(minute, 0), 59)
 
   if (suffix === 'pm' && hour < 12) hour += 12
   if (suffix === 'am' && hour === 12) hour = 0
-  if (!suffix && hour === 24 && minute === '00') return '24:00'
+
+  if (!suffix && hour === 24 && minute === 0) {
+    return '24:00'
+  }
+
   hour = Math.min(Math.max(hour, 0), 23)
 
-  return `${pad(hour)}:${minute}`
+  return `${pad(hour)}:${pad(minute)}`
 }
 
 export function toMinutes(value: string): number | null {
@@ -72,17 +111,14 @@ export function normalizeRange(
   const startMinutes = toMinutes(start)
   const endMinutes = toMinutes(end)
 
-  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes === endMinutes) {
+  if (!start || !end || startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
     return null
   }
 
-  const spansMidnight = endMinutes < startMinutes
-  const endLabel = spansMidnight && endMinutes === 0 ? '24:00' : end
-
   return {
-    normalized: { start, end: endLabel },
+    normalized: { start, end },
     startMinutes,
-    sortEndMinutes: spansMidnight ? endMinutes + 24 * 60 : endMinutes,
+    sortEndMinutes: endMinutes,
   }
 }
 
@@ -196,10 +232,12 @@ function parseNormalizedString(normalized: string): OpeningHoursModel {
     }
   }
 
-  const dayModel = DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
-    day,
-    ranges: sanitizeRanges(entries.get(day) ?? []),
-  }))
+  const dayModel = DAY_ORDER.filter((day) => entries.has(day))
+    .map((day) => ({
+      day,
+      ranges: sanitizeRanges(entries.get(day) ?? []),
+    }))
+    .filter((day) => day.ranges.length > 0)
 
   return {
     days: sortDays(dayModel),
@@ -308,10 +346,12 @@ export function parseOpeningHoursModel(value?: string | null): OpeningHoursModel
       entries.set(day, existing)
     }
 
-    const dayModel = DAY_ORDER.filter((day) => entries.has(day)).map((day) => ({
-      day,
-      ranges: sanitizeRanges(entries.get(day) ?? []),
-    }))
+    const dayModel = DAY_ORDER.filter((day) => entries.has(day))
+      .map((day) => ({
+        day,
+        ranges: sanitizeRanges(entries.get(day) ?? []),
+      }))
+      .filter((day) => day.ranges.length > 0)
 
     return {
       days: sortDays(dayModel),

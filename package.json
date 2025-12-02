@@ -27,7 +27,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run test && npm run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "docs": "typedoc"
   },
   "keywords": [
     "react",
@@ -79,6 +80,7 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^14.0.0",
     "tsup": "^8.3.5",
+    "typedoc": "^0.28.15",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
     "vitest": "^1.6.0"

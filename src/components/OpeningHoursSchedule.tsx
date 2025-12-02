@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import opening_hours from 'opening_hours'
 import type { OpeningHoursScheduleProps } from './types'
 import '../styles.css'
 
@@ -79,7 +80,7 @@ function rotateDays(days: DaySchedule[], startOfWeek: number): DaySchedule[] {
 }
 
 function buildSchedule(
-  openingHours: any,
+  openingHours: opening_hours,
   now: Date,
   opts: {
     locale: string
@@ -127,7 +128,6 @@ function buildSchedule(
     }
   }
 
-  // Ensure all days appear, even when fully closed
   for (let day = 0; day < 7; day++) {
     if (!schedule.has(day)) {
       const dateForLabel = nextDateForDay(now, day, opts.timeZone)
@@ -143,36 +143,57 @@ function buildSchedule(
   return rotateDays(ordered, opts.startOfWeek)
 }
 
+function resolveLocale(locale: string): string {
+  try {
+    new Intl.DateTimeFormat(locale)
+    return locale
+  } catch {
+    return 'en'
+  }
+}
+
+function inferHourCycle(locale: string): '12h' | '24h' {
+  try {
+    const resolved = new Intl.DateTimeFormat(locale, { hour: 'numeric' })
+      .resolvedOptions() as Intl.ResolvedDateTimeFormatOptions & { hourCycle?: string }
+    if (resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12') return '12h'
+    return '24h'
+  } catch {
+    return '24h'
+  }
+}
+
 export function OpeningHoursSchedule({
   openingHours,
   locale = 'en',
   dayLabelStyle = 'short',
   timeZone,
-  hourCycle = '24h',
+  hourCycle,
   now,
   startOfWeek = 1,
   className = '',
 }: OpeningHoursScheduleProps) {
   const currentTime = now ?? new Date()
-  const today = currentTime.getDay()
+  const safeLocale = useMemo(() => resolveLocale(locale), [locale])
+  const effectiveHourCycle = hourCycle ?? inferHourCycle(safeLocale)
 
   const intervals = useMemo(() => {
-    if (!openingHours) {
-      return []
-    }
+    if (!openingHours) return []
     try {
       return buildSchedule(openingHours, currentTime, {
-        locale,
+        locale: safeLocale,
         timeZone,
         dayLabelStyle,
-        hourCycle,
+        hourCycle: effectiveHourCycle,
         lookaheadDays: 7,
         startOfWeek,
       })
     } catch {
       return []
     }
-  }, [openingHours, currentTime, locale, timeZone, hourCycle, dayLabelStyle, startOfWeek])
+  }, [openingHours, currentTime, safeLocale, timeZone, dayLabelStyle, effectiveHourCycle, startOfWeek])
+
+  const today = currentTime.getDay()
 
   return (
     <div className={`opening-hours-schedule ${className}`.trim()}>

@@ -49,7 +49,7 @@ describe('buildOpeningHoursString', () => {
     expect(pretty).toContain('17:00-02:00')
   })
 
-  it('keeps overnight spans together across days in a week', () => {
+  it('drops ranges that attempt to span past midnight', () => {
     const value = 'Mo-Th 10:00-24:00; Fr-Sa 10:00-01:00; Su 10:00-24:00'
     const model = parseOpeningHoursModel(value)
 
@@ -57,17 +57,17 @@ describe('buildOpeningHoursString', () => {
     const saturday = model.days.find((d) => d.day === 6)
     const sunday = model.days.find((d) => d.day === 0)
 
-    expect(friday?.ranges).toEqual([{ start: '10:00', end: '01:00' }])
-    expect(saturday?.ranges).toEqual([{ start: '10:00', end: '01:00' }])
+    expect(friday).toBeUndefined()
+    expect(saturday).toBeUndefined()
     expect(sunday?.ranges).toEqual([{ start: '10:00', end: '24:00' }])
   })
 
-  it('captures spillover past Sunday night into Monday with extra lookahead', () => {
+  it('rejects spillover past Sunday night into Monday', () => {
     const value = 'Su 18:00-02:00'
     const model = parseOpeningHoursModel(value)
     const sunday = model.days.find((d) => d.day === 0)
 
-    expect(sunday?.ranges).toEqual([{ start: '18:00', end: '02:00' }])
+    expect(sunday).toBeUndefined()
   })
 
   it('handles holidays in the opening hours string', () => {

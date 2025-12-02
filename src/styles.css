@@ -6,7 +6,7 @@
   gap: 2px;
   padding: 8px 12px;
   border-radius: 6px;
-  min-width: 140px;
+  min-width: 120px;
   text-align: center;
 }
 
@@ -38,138 +38,58 @@
 }
 
 .opening-hours-editor {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
+  gap: 16px;
 }
 
-.opening-hours-editor.has-changes {}
-
-.opening-hours-editor.has-error {}
-
-.opening-hours-editor .header {
-  font-weight: 700;
-  font-size: 14px;
-  color: #0f172a;
-  padding: 4px 6px 8px;
+.opening-hours-editor-day {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
 }
 
-.opening-hours-editor .reset-button {
-  border: none;
-  background: #f59e0b;
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 11px;
+.opening-hours-editor-day:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.opening-hours-editor-label {
+  min-width: 40px;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 150ms ease-out;
-}
-
-.opening-hours-editor .reset-button:hover {
-  background: #d97706;
-}
-
-.opening-hours-editor .additional-rules {
-  padding: 4px 6px 8px;
-}
-
-.opening-hours-editor .additional-rules label {
-  display: grid;
-  gap: 4px;
-}
-
-.opening-hours-editor .additional-rules span {
-  font-size: 13px;
-  color: #475569;
-}
-
-.opening-hours-editor .additional-rules textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 14px;
-  font-family: monospace;
-}
-
-.opening-hours-editor .output-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2px;
-}
-
-.opening-hours-editor .output-container span {
-  font-size: 11px;
-  color: #475569;
-}
-
-.opening-hours-editor .output-container button {
-  border: none;
-  background: transparent;
-  color: #0f172a;
-  font-size: 11px;
-  cursor: pointer;
-  padding: 2px 4px;
-}
-
-.opening-hours-editor .output-code-container {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 44px;
-}
-
-.opening-hours-editor .output-code {
-  font-family: monospace;
-  font-size: 11px;
-  color: #0f172a;
-  word-break: break-word;
-}
-
-.opening-hours-editor .osm-raw-input {
-  font-family: monospace;
-  font-size: 11px;
-  color: #0f172a;
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  resize: vertical;
-  min-height: 60px;
-}
-
-.opening-hours-editor .osm-raw-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.opening-hours-editor .osm-link {
-  margin-top: 4px;
   padding-top: 4px;
 }
 
-.opening-hours-editor .osm-link a {
-  font-size: 10px;
-  color: #475569;
-  text-decoration: none;
+.opening-hours-editor-day-ranges {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.opening-hours-editor .osm-link a:hover {
-  color: #0f172a;
-  text-decoration: underline;
+.opening-hours-editor-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.opening-hours-editor-range input {
+  width: 90px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+}
+
+.opening-hours-editor-range input[aria-invalid='true'] {
+  border-color: #dc2626;
+}
+
+.opening-hours-editor-hint {
+  color: #b91c1c;
+  font-size: 12px;
 }
 
 .opening-hours-schedule-row {
@@ -184,102 +104,40 @@
   font-weight: 600;
 }
 
-.day-row {
-  padding: 4px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
+.pill {
+  border-radius: 999px;
+  border: 1px solid #94a3b8;
+  padding: 2px 12px;
+  font-size: 12px;
+  background: transparent;
+  cursor: pointer;
 }
 
-.day-row-label {
-  font-weight: 700;
+.pill.muted {
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.opening-hours-schedule-edit-row .separator {
+  color: #475569;
   font-size: 13px;
-  color: #0f172a;
-  min-width: 42px;
 }
 
-.day-row-ranges {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-start;
-}
-
-.add-range-button {
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px dashed #cbd5e1;
-  background: transparent;
-  color: #0f172a;
+.opening-hours-schedule-editor .pill {
+  align-self: flex-start;
+  border-radius: 999px;
+  border: 1px solid #94a3b8;
+  padding: 2px 12px;
   font-size: 12px;
+  background: transparent;
   cursor: pointer;
 }
 
-.range-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  transition: opacity 300ms ease-in-out, max-height 300ms ease-in-out, padding 300ms ease-in-out;
-  overflow: hidden;
+.opening-hours-schedule-editor .pill.muted {
+  border-color: #cbd5e1;
+  color: #475569;
 }
-
-.range-chip.changed {}
-
-.range-chip.normal {}
-
-.range-chip input {
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 4px 6px;
-  font-size: 12px;
-  height: 24px;
-  width: 70px;
-  transition: border-color 200ms ease-out;
-}
-
-.opening-hours-editor.has-error .range-chip input {
-  border-color: #dc2626;
-}
-
-.opening-hours-editor.has-changes .range-chip input {
-  border-color: #f59e0b;
-}
-
-.range-chip .separator {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.range-chip .suffix {
-  font-size: 11px;
-  color: #334155;
-}
-
-.range-chip .buttons {
-  display: flex;
-  margin-left: auto;
-  gap: 6px;
-}
-
-.range-chip .buttons button {
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.range-chip .buttons .remove-button {
-  color: #be123c;
-}
-
-.range-chip .buttons .add-button {
-  color: #0f172a;
+.separator {
+  color: #475569;
+  font-size: 13px;
 }

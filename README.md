@@ -28,62 +28,20 @@ npm install i18next react-i18next
 
 ## Usage
 
-### Display Component
-
-```tsx
-import { opening_hours, OpeningHours } from '@osm-is-it-open/hours'
-import '@osm-is-it-open/hours/dist/styles.css'
-
-// Create opening_hours instance
-const oh = new opening_hours('Mo-Fr 09:00-17:00')
-
-// Display status badge
-<OpeningHours
-  openingHours={oh}
-  hourCycle="12h"
-/>
-```
-
-### Editor Component
-
-```tsx
-import { opening_hours, OpeningHoursEditor } from '@osm-is-it-open/hours'
-
-const [oh, setOh] = useState(() => new opening_hours('Mo-Fr 09:00-17:00'))
-
-<OpeningHoursEditor
-  openingHours={oh}
-  onChange={(newOh) => setOh(newOh)}
-  hourCycle="12h"
-/>
-```
-
-### Editable Display Component
-
-The main `OpeningHours` component supports inline editing:
-
-```tsx
-<OpeningHours
-  openingHours={oh}
-  editable={true}
-  onChange={(newOh) => setOh(newOh)}
-/>
-```
-
 ### Schedule Component
 
-Render a week-at-a-glance schedule without any editing UI:
+Render a clean, read-only week schedule:
 
 ```tsx
-import { OpeningHoursSchedule } from '@osm-is-it-open/hours'
+import { opening_hours, OpeningHoursSchedule } from '@osm-is-it-open/hours'
+
+const oh = new opening_hours('Mo-Fr 09:00-17:00; Sa 10:00-14:00')
 
 <OpeningHoursSchedule
   openingHours={oh}
   locale="en"
+  dayLabelStyle="short"
   timeZone="America/New_York"
-  hourCycle="12h"
-  dayLabelStyle="long"
-  startOfWeek={1} // Monday
 />
 ```
 
@@ -91,9 +49,31 @@ Schedule props:
 - `locale` (default: `'en'`)
 - `dayLabelStyle`: `'short' | 'long'` (default: `'short'`)
 - `timeZone` (optional)
-- `hourCycle`: `'12h' | '24h'` (default: `'24h'`)
+- `hourCycle`: `'12h' | '24h'` (default: inferred from locale)
 - `startOfWeek`: `0 | 1` (default: `1`)
 - `className` for custom styling hooks
+
+### Editor Component
+
+Let users edit opening hours inline:
+
+```tsx
+import { opening_hours, OpeningHoursEditor } from '@osm-is-it-open/hours'
+
+const [value, setValue] = useState(() => new opening_hours('Mo-Fr 09:00-17:00'))
+
+<OpeningHoursEditor
+  openingHours={value}
+  onChange={(next) => setValue(next)}
+  locale="en"
+  dayLabelStyle="short"
+/>
+```
+
+Editor props:
+- `openingHours` (required) — `opening_hours` instance to edit
+- `onChange` — called with a new `opening_hours` instance when edits are valid
+- `locale`, `dayLabelStyle`, `className`
 
 ### Working with Location Context
 
@@ -113,7 +93,7 @@ const nominatim = {
 
 const oh = new opening_hours('Mo-Fr 09:00-17:00; PH off', nominatim)
 
-<OpeningHours openingHours={oh} />
+<OpeningHoursSchedule openingHours={oh} />
 ```
 
 Public holiday rules (`PH`) require a country code. Today you pass that context yourself (see `address.country_code` above).
@@ -122,30 +102,8 @@ holiday context from locale/coordinates automatically while keeping the UI layer
 
 ## Components
 
-### `<OpeningHours>`
-
-Displays current opening status as a badge with "Open/Closed" state and next change time.
-
-**Props:**
-- `openingHours: OpeningHoursLib` - opening_hours instance to display (required)
-- `locale?: string` - Locale for formatting (default: 'en')
-- `timeZone?: string` - Timezone for display (default: user's local timezone)
-- `hourCycle?: '12h' | '24h'` - Hour cycle (default: '24h')
-- `now?: Date` - Reference time for status calculation (default: current time)
-- `className?: string` - Additional CSS class
-- `editable?: boolean` - Enable editing mode (default: false)
-- `onChange?: (openingHours: OpeningHoursLib) => void` - Callback for changes (when editable=true)
-
-### `<OpeningHoursEditor>`
-
-Full-featured editor for opening hours with visual day/time range editing.
-
-**Props:**
-- `openingHours: OpeningHoursLib` - opening_hours instance to edit (required)
-- `onChange?: (openingHours: OpeningHoursLib) => void` - Callback when modified
-- `hourCycle?: '12h' | '24h'` - Hour cycle (default: '24h')
-- `className?: string` - Additional CSS class
-- `originalOpeningHours?: OpeningHoursLib` - Original instance for comparison/reset
+- **`<OpeningHoursSchedule>`** – display-only schedule component.
+- **`<OpeningHoursEditor>`** – minimal inline editor focused on quick corrections/additions.
 
 ## Internationalization
 
@@ -168,7 +126,6 @@ Full TypeScript support with exported types:
 
 ```tsx
 import type {
-  OpeningHoursProps,
   OpeningHoursEditorProps,
   OpeningHoursScheduleProps,
   OpeningHoursLib,
@@ -206,6 +163,11 @@ See the [opening_hours documentation](https://github.com/opening-hours/opening_h
 - Modern browsers (Chrome, Firefox, Safari, Edge)
 - React 18+
 - No IE11 support
+
+## Documentation
+
+- Add or update TSDoc comments next to any API changes (especially the exported prop types and helpers).
+- Run `npm run docs` to regenerate the reference site in `docs/api`. Include the regenerated files in your PR so consumers always see accurate signatures.
 
 ## License
 
