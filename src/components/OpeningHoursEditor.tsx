@@ -120,6 +120,9 @@ export function OpeningHoursEditor({
   }, [model, onChange])
 
   const updateRange = (day: number, idx: number, field: 'start' | 'end', value: string) => {
+    // Convert 00:00 to 24:00 for end times (midnight at end of day)
+    const actualValue = field === 'end' && value === '00:00' ? '24:00' : value
+
     setModel((prev) => ({
       ...prev,
       days: prev.days.map((entry) =>
@@ -127,7 +130,7 @@ export function OpeningHoursEditor({
           ? {
             ...entry,
             ranges: entry.ranges.map((range, rangeIdx) =>
-              rangeIdx === idx ? { ...range, [field]: value } : range,
+              rangeIdx === idx ? { ...range, [field]: actualValue } : range,
             ),
           }
           : entry,
@@ -187,6 +190,9 @@ export function OpeningHoursEditor({
                 const endInvalid = validation.endInvalid || validation.orderInvalid
                 const overlapInvalid = validation.overlapInvalid
 
+                // Convert 24:00 to 00:00 for display in HTML time input
+                const displayEndValue = range.end === '24:00' ? '00:00' : range.end
+
                 return (
                   <div key={`${dayNumber}-${idx}`} className="opening-hours-editor-range">
                     <input
@@ -198,7 +204,7 @@ export function OpeningHoursEditor({
                     <span className="separator">to</span>
                     <input
                       type="time"
-                      value={range.end}
+                      value={displayEndValue}
                       onChange={(e) => updateRange(dayNumber, idx, 'end', e.target.value)}
                       aria-invalid={endInvalid ? 'true' : undefined}
                     />
