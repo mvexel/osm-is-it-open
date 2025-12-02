@@ -14,7 +14,7 @@ type DayRowProps = {
   onDone: () => void
   onAddRange: (insertAfter: number) => void
   baselineRanges: OpeningHoursRange[]
-  hourCycle: '12h' | '24h'
+  hourCycle?: '12h' | '24h'
 }
 
 export function DayRow({

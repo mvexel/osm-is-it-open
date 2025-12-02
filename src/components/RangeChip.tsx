@@ -32,6 +32,7 @@ export function RangeChip({
   onAddBelow,
 }: RangeChipProps) {
   const [isVisible, setIsVisible] = useState(range.status !== 'entering')
+  const [showChanged, setShowChanged] = useState(false)
 
   useEffect(() => {
     if (range.status === 'entering') {
@@ -43,6 +44,17 @@ export function RangeChip({
     }
   }, [range.status])
 
+  useEffect(() => {
+    if (isChanged) {
+      // Delay showing changed state to avoid flash during typing
+      const timeout = setTimeout(() => setShowChanged(true), 300)
+      return () => clearTimeout(timeout)
+    }
+    // Hide immediately when not changed
+    setShowChanged(false)
+    return undefined
+  }, [isChanged])
+
   const style: React.CSSProperties = {
     opacity: isVisible ? 1 : 0,
     maxHeight: isVisible ? CHIP_HEIGHT : 0,
@@ -52,7 +64,7 @@ export function RangeChip({
 
   return (
     <div
-      className={`range-chip ${isChanged ? 'changed' : 'normal'}`}
+      className={`range-chip ${showChanged ? 'changed' : 'normal'}`}
       style={style}
       onTransitionEnd={() => {
         if (!isVisible) {

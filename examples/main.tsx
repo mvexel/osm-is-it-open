@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { OpeningHours, OpeningHoursEditor, OpeningHoursSchedule, opening_hours } from '../src'
+import { OpeningHoursEditor, OpeningHoursSchedule, opening_hours } from '../src'
 import '../src/styles.css'
 
 type ElementType = 'node' | 'way' | 'relation'
@@ -72,10 +72,13 @@ function Demo() {
   const [name, setName] = useState<string | undefined>()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [hourCycle, setHourCycle] = useState<'12h' | '24h'>('24h')
+  const [hourCycle, setHourCycle] = useState<'12h' | '24h' | 'auto'>('auto')
   const [locale, setLocale] = useState<string>('en')
   const [dayLabelStyle, setDayLabelStyle] = useState<'short' | 'long'>('short')
   const [scheduleTitle, setScheduleTitle] = useState<string>('Display only')
+  const [showAdditionalRules, setShowAdditionalRules] = useState(false)
+  const [rawOsm, setRawOsm] = useState(false)
+  const [osmReadWrite, setOsmReadWrite] = useState(false)
 
   const handleFetch = async () => {
     setLoading(true)
@@ -117,63 +120,39 @@ function Demo() {
   return (
     <div
       style={{
-        maxWidth: 720,
-        margin: '0 auto',
-        padding: '24px',
         display: 'flex',
-        gap: '20px',
         flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
       }}
     >
-      <header>
-        <h1 style={{ margin: '0 0 8px' }}>Opening Hours Demo</h1>
-        <p style={{ margin: 0, color: '#475569' }}>
-          Enter an OSM element ID (node/way/relation) to load its opening_hours via Overpass and preview the UI
-          components. You can also edit the hours interactively below.
-        </p>
-      </header>
-
-      <div
+      {/* Top Navigation with Global Settings */}
+      <header
         style={{
           background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-          padding: 16,
-          display: 'grid',
-          gap: 12,
+          borderBottom: '2px solid #e2e8f0',
+          padding: '16px 24px',
         }}
       >
+        <h1 style={{ margin: '0 0 16px', fontSize: 20 }}>Opening Hours Component Showcase</h1>
+
+        {/* Global Settings */}
         <div
           style={{
-            display: 'grid',
-            gap: 12,
-            gridTemplateColumns: '1fr 1fr',
-            alignItems: 'end',
+            display: 'flex',
+            gap: 24,
+            alignItems: 'center',
+            flexWrap: 'wrap',
           }}
         >
-          <label style={{ display: 'grid', gap: 6, gridColumn: '1 / span 2' }}>
-            <span style={{ fontWeight: 600 }}>Title</span>
-            <input
-              value={scheduleTitle}
-              onChange={(e) => setScheduleTitle(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                fontSize: 14,
-              }}
-            />
-          </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>Locale</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Locale:</span>
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value || 'en')}
               style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
+                padding: '6px 10px',
+                borderRadius: 6,
                 border: '1px solid #cbd5e1',
                 fontSize: 14,
                 background: '#fff',
@@ -186,62 +165,43 @@ function Demo() {
               ))}
             </select>
           </label>
-          <div style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>Day labels</span>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(['short', 'long'] as const).map((style) => (
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Hour Cycle:</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {(['auto', '24h', '12h'] as const).map((cycle) => (
                 <button
-                  key={style}
-                  onClick={() => setDayLabelStyle(style)}
+                  key={cycle}
+                  onClick={() => setHourCycle(cycle)}
                   style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    borderRadius: 10,
+                    padding: '6px 16px',
+                    borderRadius: 6,
                     border: '1px solid #cbd5e1',
-                    background: dayLabelStyle === style ? '#0f172a' : '#e2e8f0',
-                    color: dayLabelStyle === style ? '#fff' : '#0f172a',
+                    background: hourCycle === cycle ? '#0f172a' : '#fff',
+                    color: hourCycle === cycle ? '#fff' : '#0f172a',
                     cursor: 'pointer',
-                    fontWeight: 600,
+                    fontWeight: 500,
+                    fontSize: 14,
                   }}
                   type="button"
                 >
-                  {style === 'short' ? 'Abbrev.' : 'Full'}
+                  {cycle === 'auto' ? 'Auto' : cycle}
                 </button>
               ))}
             </div>
           </div>
-        </div>
 
-        <div style={{ fontWeight: 600 }}>{scheduleTitle}</div>
-        <OpeningHoursSchedule
-          openingHours={openingHours}
-          hourCycle={hourCycle}
-          locale={locale}
-          dayLabelStyle={dayLabelStyle}
-        />
-      </div>
-
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-          padding: 16,
-          display: 'grid',
-          gap: 12,
-        }}
-      >
-        <label style={{ display: 'grid', gap: 6 }}>
-          <span style={{ fontWeight: 600 }}>OSM element</span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          {/* Data Source */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 300 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Load OSM:</span>
             <input
               value={element}
               onChange={(e) => setElement(e.target.value)}
-              placeholder="node/123"
+              placeholder="node/4311815199"
               style={{
                 flex: 1,
-                padding: '10px 12px',
-                borderRadius: 8,
+                padding: '6px 10px',
+                borderRadius: 6,
                 border: '1px solid #cbd5e1',
                 fontSize: 14,
               }}
@@ -250,114 +210,241 @@ function Demo() {
               onClick={handleFetch}
               disabled={loading}
               style={{
-                padding: '10px 16px',
-                borderRadius: 8,
+                padding: '6px 16px',
+                borderRadius: 6,
                 border: 'none',
                 background: '#0f172a',
                 color: '#fff',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+                opacity: loading ? 0.6 : 1,
               }}
             >
               {loading ? 'Loading…' : 'Fetch'}
             </button>
           </div>
-          <span style={{ color: '#64748b', fontSize: 13 }}>
-            Format: node/123, way/456, or relation/789. Uses Overpass (open CORS). Falls back to default hours when no
-            tag is present.
-          </span>
-        </label>
-
-        <div style={{ display: 'grid', gap: 10 }}>
-          <div style={{ fontWeight: 600 }}>
-            opening_hours value {name ? `(from ${name})` : ''}
-          </div>
-          <OpeningHoursEditor
-            openingHours={openingHours}
-            onChange={(updated) => {
-              setOpeningHours(updated)
-              setRawValue(updated.prettifyValue())
-              setError(null)
-            }}
-            hourCycle={hourCycle}
-          />
-          <label style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontSize: 13, color: '#475569' }}>Raw opening_hours (optional)</span>
-            <textarea
-              value={rawValue}
-              onChange={(e) => handleRawChange(e.target.value)}
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                fontSize: 14,
-                fontFamily: 'monospace',
-              }}
-              placeholder="Mo-Fr 09:00-17:00; Sa 10:00-14:00"
-            />
-            <span style={{ color: '#94a3b8', fontSize: 12 }}>
-              Changes to the raw text stay in sync with the editor above.
-            </span>
-          </label>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontWeight: 600 }}>Clock:</span>
-          {(['24h', '12h'] as const).map((cycle) => (
-            <button
-              key={cycle}
-              onClick={() => setHourCycle(cycle)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                background: hourCycle === cycle ? '#0f172a' : '#e2e8f0',
-                color: hourCycle === cycle ? '#fff' : '#0f172a',
-                cursor: 'pointer',
-              }}
-            >
-              {cycle}
-            </button>
-          ))}
-        </div>
-
-        {error && (
-          <div style={{ color: '#b91c1c', fontSize: 13, background: '#fef2f2', padding: 10, borderRadius: 8 }}>
-            {error}
+        {name && (
+          <div style={{ fontSize: 13, color: '#475569', marginTop: 12 }}>
+            📍 <strong>{name}</strong>
+            {coords && ` • ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`}
           </div>
         )}
+        {error && (
+          <div style={{ color: '#b91c1c', fontSize: 13, marginTop: 12, background: '#fef2f2', padding: 8, borderRadius: 6 }}>
+            ⚠️ {error}
+          </div>
+        )}
+      </header>
 
+      {/* Main Content - Side by Side Components */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+          gap: 24,
+          padding: 24,
+          overflow: 'auto',
+          flex: 1,
+          maxWidth: 1400,
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
+
+        {/* OpeningHoursSchedule Component */}
         <div
           style={{
             background: '#f8fafc',
-            border: '1px solid #e2e8f0',
             borderRadius: 12,
-            padding: 12,
-            display: 'grid',
-            gap: 8,
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            maxHeight: 'calc(100vh - 180px)',
+            overflow: 'auto',
           }}
         >
-          <div style={{ fontWeight: 600 }}>Preview</div>
-          <OpeningHours
-            openingHours={openingHours}
-            hourCycle={hourCycle}
-            locale={locale}
-            editable
-            onChange={(updated) => {
-              setOpeningHours(updated)
-              setRawValue(updated.prettifyValue())
-              setError(null)
-            }}
-          />
-          <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#475569' }}>
-            Normalized: {prettified || '—'}
+          <div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 16, color: '#475569', fontWeight: 600 }}>
+              <code style={{ background: '#e2e8f0', padding: '4px 8px', borderRadius: 6, fontWeight: 600, fontSize: 14 }}>OpeningHoursSchedule</code>
+            </h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+              Component settings and demo
+            </p>
           </div>
-          {coords && (
-            <div style={{ fontSize: 13, color: '#475569' }}>
-              Coords: {coords[0].toFixed(5)}, {coords[1].toFixed(5)}
+          <div
+            style={{
+              display: 'grid',
+              gap: 12,
+              gridTemplateColumns: '1fr 1fr',
+              padding: 12,
+              background: '#fff',
+              borderRadius: 8,
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <label style={{ display: 'grid', gap: 6, gridColumn: '1 / span 2' }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Component Setting: Title</span>
+              <input
+                value={scheduleTitle}
+                onChange={(e) => setScheduleTitle(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  fontSize: 14,
+                }}
+              />
+            </label>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Component Setting: Day Labels</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['short', 'long'] as const).map((style) => (
+                  <button
+                    key={style}
+                    onClick={() => setDayLabelStyle(style)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      background: dayLabelStyle === style ? '#3b82f6' : '#fff',
+                      color: dayLabelStyle === style ? '#fff' : '#0f172a',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                    }}
+                    type="button"
+                  >
+                    {style === 'short' ? 'Short' : 'Long'}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component Output</div>
+            <div
+              style={{
+                padding: 20,
+                background: '#fff',
+                borderRadius: 8,
+                border: '3px solid #3b82f6',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 15 }}>{scheduleTitle}</div>
+              <OpeningHoursSchedule
+                openingHours={openingHours}
+                hourCycle={hourCycle === 'auto' ? undefined : hourCycle}
+                locale={locale}
+                dayLabelStyle={dayLabelStyle}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* OpeningHours Component */}
+        <div
+          style={{
+            background: '#f8fafc',
+            borderRadius: 12,
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            maxHeight: 'calc(100vh - 180px)',
+            overflow: 'auto',
+          }}
+        >
+          <div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 16, color: '#475569', fontWeight: 600 }}>
+              <code style={{ background: '#e2e8f0', padding: '4px 8px', borderRadius: 6, fontWeight: 600, fontSize: 14 }}>OpeningHoursEditor</code>
+            </h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+              Component settings and demo
+            </p>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gap: 12,
+              padding: 12,
+              background: '#fff',
+              borderRadius: 8,
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Component Settings</h3>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showAdditionalRules}
+                  onChange={(e) => setShowAdditionalRules(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14 }}>Show additional rules input</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={rawOsm}
+                  onChange={(e) => setRawOsm(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14 }}>Show raw OSM hours</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginLeft: 24 }}>
+                <input
+                  type="checkbox"
+                  checked={osmReadWrite}
+                  onChange={(e) => setOsmReadWrite(e.target.checked)}
+                  disabled={!rawOsm}
+                  style={{ width: 16, height: 16, cursor: rawOsm ? 'pointer' : 'not-allowed', opacity: rawOsm ? 1 : 0.5 }}
+                />
+                <span style={{ fontSize: 14, opacity: rawOsm ? 1 : 0.5 }}>Make OSM hours editable (requires raw OSM)</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component Output</div>
+            <div
+              style={{
+                padding: 20,
+                background: '#fff',
+                borderRadius: 8,
+                border: '3px solid #f59e0b',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                minHeight: 100,
+              }}
+            >
+              <OpeningHoursEditor
+                openingHours={openingHours}
+                hourCycle={hourCycle === 'auto' ? undefined : hourCycle}
+                locale={locale}
+                editable
+                onChange={(updated) => {
+                  setOpeningHours(updated)
+                  setRawValue(updated.prettifyValue())
+                  setError(null)
+                }}
+                showAdditionalRules={showAdditionalRules}
+                rawOsm={rawOsm}
+                osmReadWrite={osmReadWrite}
+                osmId={name}
+              />
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            💡 Click the badge to toggle inline editing mode. Use the checkboxes above to show/hide additional features.
+          </div>
         </div>
       </div>
     </div>

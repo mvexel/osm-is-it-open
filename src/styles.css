@@ -38,52 +38,41 @@
 }
 
 .opening-hours-editor {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 8px;
-  background: #ffffff;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 100%;
 }
 
+.opening-hours-editor.has-changes {}
+
+.opening-hours-editor.has-error {}
+
 .opening-hours-editor .header {
   font-weight: 700;
   font-size: 14px;
   color: #0f172a;
   padding: 4px 6px 8px;
-}
-
-.opening-hours-editor .changed-alert {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fef9c3;
-  border: 1px solid #fde68a;
-  color: #92400e;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
 }
 
-.opening-hours-editor .changed-alert button {
+.opening-hours-editor .reset-button {
   border: none;
-  background: transparent;
-  color: #92400e;
+  background: #f59e0b;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 150ms ease-out;
 }
 
-.opening-hours-editor .invalid-alert {
-  display: flex;
-  align-items: center;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
+.opening-hours-editor .reset-button:hover {
+  background: #d97706;
 }
 
 .opening-hours-editor .additional-rules {
@@ -148,10 +137,28 @@
   word-break: break-word;
 }
 
+.opening-hours-editor .osm-raw-input {
+  font-family: monospace;
+  font-size: 11px;
+  color: #0f172a;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.opening-hours-editor .osm-raw-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
 .opening-hours-editor .osm-link {
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid #e2e8f0;
 }
 
 .opening-hours-editor .osm-link a {
@@ -178,7 +185,6 @@
 }
 
 .day-row {
-  border-bottom: 1px solid #e2e8f0;
   padding: 4px 0;
   display: flex;
   align-items: center;
@@ -206,31 +212,24 @@
   padding: 6px 10px;
   border-radius: 10px;
   border: 1px dashed #cbd5e1;
-  background: #f8fafc;
+  background: transparent;
   color: #0f172a;
   font-size: 12px;
   cursor: pointer;
 }
 
 .range-chip {
-  border-radius: 10px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
-  transition: opacity 300ms ease-in-out, max-height 300ms ease-in-out, padding 300ms ease-in-out, border 300ms ease-in-out;
+  padding: 0;
+  transition: opacity 300ms ease-in-out, max-height 300ms ease-in-out, padding 300ms ease-in-out;
   overflow: hidden;
 }
 
-.range-chip.changed {
-  border: 1px solid #fbbf24;
-  background: #fffbeb;
-}
+.range-chip.changed {}
 
-.range-chip.normal {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
+.range-chip.normal {}
 
 .range-chip input {
   border: 1px solid #cbd5e1;
@@ -239,6 +238,15 @@
   font-size: 12px;
   height: 24px;
   width: 70px;
+  transition: border-color 200ms ease-out;
+}
+
+.opening-hours-editor.has-error .range-chip input {
+  border-color: #dc2626;
+}
+
+.opening-hours-editor.has-changes .range-chip input {
+  border-color: #f59e0b;
 }
 
 .range-chip .separator {
