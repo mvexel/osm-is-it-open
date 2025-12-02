@@ -200,6 +200,7 @@ export function OpeningHoursEditor({
                       value={range.start}
                       onChange={(e) => updateRange(dayNumber, idx, 'start', e.target.value)}
                       aria-invalid={startInvalid ? 'true' : undefined}
+                      required
                     />
                     <span className="separator">to</span>
                     <input
@@ -207,6 +208,8 @@ export function OpeningHoursEditor({
                       value={displayEndValue}
                       onChange={(e) => updateRange(dayNumber, idx, 'end', e.target.value)}
                       aria-invalid={endInvalid ? 'true' : undefined}
+                      min={range.start || undefined}
+                      required
                     />
                     <button type="button" className="pill muted" onClick={() => removeRange(dayNumber, idx)}>
                       Remove
