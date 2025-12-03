@@ -1,10 +1,7 @@
 /**
  * Returns a copy of date with time set to 00:00:00.000 in local time.
- *
- * @param date source date
- * @returns new Date at start of day (local time)
  */
-export function startOfDayLocal(date: Date): Date {
+function startOfDayLocal(date: Date): Date {
     const d = new Date(date)
     d.setHours(0, 0, 0, 0)
     return d

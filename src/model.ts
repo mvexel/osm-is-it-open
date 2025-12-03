@@ -1,7 +1,7 @@
 import type { nominatim_object } from 'opening_hours'
 import opening_hours from 'opening_hours'
 import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './components/openingHoursTypes'
-import { startOfDayLocal, daySpan } from './utils/date'
+import { daySpan } from './utils/date'
 
 
 /**

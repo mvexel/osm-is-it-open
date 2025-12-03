@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
 import opening_hours from 'opening_hours'
-import type { OpeningHoursScheduleProps } from './types'
+import { useMemo } from 'react'
 import '../styles.css'
 import { startOfDay } from '../utils/date'
+import type { OpeningHoursScheduleProps } from './types'
+import { HourCycle } from './types'
 
 interface DayRange {
   start: string
@@ -20,12 +21,12 @@ function formatTime(
   date: Date,
   locale: string,
   timeZone?: string,
-  hourCycle: '12h' | '24h' = '24h',
+  hourCycle: HourCycle = HourCycle.TwentyFourHour,
 ): string {
   const formatter = new Intl.DateTimeFormat(locale, {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: hourCycle === '12h',
+    hour12: hourCycle === HourCycle.TwelveHour,
     timeZone,
   })
   return formatter.format(date)
@@ -67,7 +68,7 @@ function buildSchedule(
     locale: string
     timeZone?: string
     dayLabelStyle: 'short' | 'long'
-    hourCycle: '12h' | '24h'
+    hourCycle: HourCycle
     lookaheadDays: number
     startOfWeek: number
   },
@@ -133,14 +134,14 @@ function resolveLocale(locale: string): string {
   }
 }
 
-function inferHourCycle(locale: string): '12h' | '24h' {
+function inferHourCycle(locale: string): HourCycle {
   try {
     const resolved = new Intl.DateTimeFormat(locale, { hour: 'numeric' })
       .resolvedOptions() as Intl.ResolvedDateTimeFormatOptions & { hourCycle?: string }
-    if (resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12') return '12h'
-    return '24h'
+    if (resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12') return HourCycle.TwelveHour
+    return HourCycle.TwentyFourHour
   } catch {
-    return '24h'
+    return HourCycle.TwentyFourHour
   }
 }
 
@@ -156,7 +157,7 @@ export function OpeningHoursSchedule({
 }: OpeningHoursScheduleProps) {
   const currentTime = now ?? new Date()
   const safeLocale = useMemo(() => resolveLocale(locale), [locale])
-  const effectiveHourCycle = hourCycle ?? inferHourCycle(safeLocale)
+  const effectiveHourCycle: HourCycle = hourCycle ?? inferHourCycle(safeLocale)
 
   const intervals = useMemo(() => {
     if (!openingHours) return []
