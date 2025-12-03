@@ -119,24 +119,27 @@ function resolveLocale(locale: string): string {
 /**
  * Editor UI for OpenStreetMap `opening_hours` (uses the `opening_hours` npm lib).
  *
- * Props
- * @param openingHours optional `opening_hours` instance used as the initial source (prettified).
- * @param onChange called with a new `opening_hours` instance whenever the editor produces a valid, changed value (not on first mount).
- * @param locale locale string for weekday labels (falls back to 'en' if invalid).
- * @param dayLabelStyle DateTimeFormat weekday option ('short' | 'long', etc.).
- * @param className optional extra CSS classes for the container.
- *
- * Behaviour / notes
+ * @remarks
+ * Behaviour / notes:
  * - Internal model converts end-time '00:00' to '24:00' for end-of-day ranges.
  * - Editor will not call `onChange` until the model has no invalid ranges.
  * - Parsing/formatting errors are swallowed until the user fixes input.
+ *
+ * @param props - Component props
+ * @param props.openingHours - Optional `opening_hours` instance used as the initial source (prettified)
+ * @param props.onChange - Called with a new `opening_hours` instance whenever the editor produces a valid, changed value (not on first mount)
+ * @param props.locale - Locale string for weekday labels (falls back to 'en' if invalid)
+ * @param props.dayLabelStyle - DateTimeFormat weekday option ('short' | 'long', etc.)
+ * @param props.className - Optional extra CSS classes for the container
+ *
+ * @returns JSX.Element
+ * 
  * @see https://github.com/opening-hours/opening_hours.js for library docs
  * @see ../model#parseOpeningHoursModel for parsing behaviour
  * @see ../model#buildOpeningHoursString for formatting behaviour
  * 
- * @returns JSX.Element
- * 
  * @example
+ * ```tsx
  * import opening_hours from 'opening_hours'
  *
  * const oh = new opening_hours('Mo-Fr 09:00-17:00')
@@ -145,11 +148,14 @@ function resolveLocale(locale: string): string {
  * // Notes:
  * // - onChange is not called on first mount.
  * // - end-time '00:00' is stored as '24:00' in the internal model.
+ * ```
  * 
  * @example
+ * ```tsx
  * // getRangeValidation flags an invalid end or overlapping ranges:
  * getRangeValidation({ start: '09:00', end: '08:00' }, [{ start: '09:00', end: '10:00' }], 0)
  * // => { startInvalid: false, endInvalid: false, orderInvalid: true, overlapInvalid: false }
+ * ```
  */
 
 export function OpeningHoursEditor({
