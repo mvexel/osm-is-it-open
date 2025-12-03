@@ -85,4 +85,4 @@ Components support optional i18next integration. If `react-i18next` is available
 **Contributing a locale:** Add your strings to `src/locales/index.ts` (or open a PR with the new locale bundle). Include translations for `open_now`, `open_until`, `closed`, `closed_opens`, and `unknown`. i18next will be used when present; the fallback map is only for when i18next is not configured.
 
 ## More to read
-Basic TSDoc is available (should be on GH pages)
+Basic TSDoc is [available](https://mvexel.github.io/osm-is-it-open/api/)
