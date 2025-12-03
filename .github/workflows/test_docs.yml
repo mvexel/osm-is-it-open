@@ -1,4 +1,4 @@
-name: Test
+name: Run Tests and Regenerate Documentation
 
 on:
   push:
@@ -44,3 +44,16 @@ jobs:
           test -f dist/index.d.ts || exit 1
           test -f dist/styles.css || exit 1
           echo "Build output verified successfully"
+
+      - name: Generate documentation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node-version == '20.x'
+        run: npm run docs
+
+      - name: Commit and push documentation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node-version == '20.x'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/api
+          git diff --staged --quiet || git commit -m "docs: regenerate API documentation [skip ci]"
+          git push

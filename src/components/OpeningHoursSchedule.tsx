@@ -155,7 +155,7 @@ export function OpeningHoursSchedule({
   firstDayOfWeek: startOfWeek = 1,
   className = '',
 }: OpeningHoursScheduleProps) {
-  const currentTime = now ?? new Date()
+  const currentTime = useMemo(() => now ?? new Date(), [now])
   const safeLocale = useMemo(() => resolveLocale(locale), [locale])
   const effectiveHourCycle: HourCycle = hourCycle ?? inferHourCycle(safeLocale)
 

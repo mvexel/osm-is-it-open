@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { opening_hours } from '../src'
 import { buildOpeningHoursString, parseOpeningHoursModel } from '../src/model'
-import type { OpeningHoursDay } from '../src/components/openingHoursTypes'
+import type { OpeningHoursDay } from '../src/components/types'
 
 describe('buildOpeningHoursString', () => {
   it('groups consecutive days with the same ranges', () => {

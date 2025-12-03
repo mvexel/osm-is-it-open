@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import opening_hours from 'opening_hours'
 import type { OpeningHoursEditorProps } from './types'
 import { DAY_ORDER, buildOpeningHoursString, parseOpeningHoursModel, normalizeRange, normalizeTimeInput, toMinutes } from '../model'
-import type { OpeningHoursModel, OpeningHoursRange } from './openingHoursTypes'
+import type { OpeningHoursModel, OpeningHoursRange } from './types'
 import '../styles.css'
 
 /**

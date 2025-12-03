@@ -1,6 +1,6 @@
 import type { nominatim_object } from 'opening_hours'
 import opening_hours from 'opening_hours'
-import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './components/openingHoursTypes'
+import type { OpeningHoursDay, OpeningHoursModel, OpeningHoursRange } from './components/types'
 import { daySpan } from './utils/date'
 
 
@@ -229,7 +229,8 @@ function expandDays(expr: string): number[] {
       const endDay = DAY_LABEL_TO_NUMBER[endLabel]
       if (startDay === undefined || endDay === undefined) continue
       let current = startDay
-      while (true) {
+      // Loop through days from start to end (wrapping if needed)
+      for (let i = 0; i < 7; i++) {
         days.push(current)
         if (current === endDay) break
         current = (current + 1) % 7
